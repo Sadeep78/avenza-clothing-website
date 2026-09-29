@@ -1,0 +1,176 @@
+@import "tailwindcss";
+
+@variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :root, .light {
+    --bg-primary: #f8fafc;
+    --bg-secondary: #ffffff;
+    --bg-card: #ffffff;
+    --bg-input: #f1f5f9;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #64748b;
+    --border-color: #e2e8f0;
+    --accent-carnage: #000000;
+    --nav-bg: #ffffff;
+  }
+
+  .dark {
+    --bg-primary: #000000;
+    --bg-secondary: #0a0a0a;
+    --bg-card: #09090b;
+    --bg-input: #18181b;
+    --text-primary: #ffffff;
+    --text-secondary: #a1a1aa;
+    --text-muted: #71717a;
+    --border-color: #27272a;
+    --accent-carnage: #ffffff;
+    --nav-bg: #000000;
+  }
+
+  body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    transition: background-color 0.3s ease, color 0.3s ease;
+    overflow-x: hidden;
+  }
+}
+
+/* Carnage Signature Typography */
+.font-carnage {
+  font-family: 'Montserrat', sans-serif;
+  font-style: italic;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+}
+
+.font-carnage-logo {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 900;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+}
+
+/* Carnage Sharp Rectangular Buttons */
+.btn-carnage-sharp {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 900;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  border-radius: 0px !important;
+  background-color: #000000;
+  color: #ffffff;
+  border: 1px solid #000000;
+  padding: 12px 28px;
+  font-size: 11px;
+  transition: all 0.2s ease;
+}
+
+.btn-carnage-sharp:hover {
+  background-color: #ffffff;
+  color: #000000;
+  border-color: #000000;
+}
+
+.dark .btn-carnage-sharp {
+  background-color: #000000;
+  color: #ffffff;
+  border: 1px solid #ffffff;
+}
+
+.dark .btn-carnage-sharp:hover {
+  background-color: #ffffff;
+  color: #000000;
+  border-color: #ffffff;
+}
+
+.btn-carnage-gold {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 900;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  border-radius: 0px !important;
+  background-color: #f59e0b;
+  color: #000000;
+  border: 1px solid #f59e0b;
+  padding: 12px 28px;
+  font-size: 11px;
+  transition: all 0.2s ease;
+}
+
+.btn-carnage-gold:hover {
+  background-color: #ffffff;
+  color: #000000;
+  border-color: #ffffff;
+}
+
+.glass-panel {
+  background: var(--nav-bg);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.card-theme {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  transition: all 0.3s ease;
+}
+
+.light .card-theme, body.light .card-theme {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+.dark .card-theme, body.dark .card-theme {
+  background-color: #09090b !important;
+  border-color: #27272a !important;
+  color: #ffffff !important;
+}
+
+.light .card-theme:hover {
+  border-color: #f59e0b !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08);
+}
+
+.dark .card-theme:hover {
+  border-color: #f59e0b !important;
+}
+
+/* Keyframe Animations */
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-down {
+  animation: fadeInDown 0.6s ease-out forwards;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #27272a;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #f59e0b;
+}
