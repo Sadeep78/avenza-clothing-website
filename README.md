@@ -49,8 +49,24 @@ The application runs on `http://localhost:5173` with backend API on `http://loca
 
 ---
 
-## 📄 License & Copyright Protection
+## 📄 License, Copyright & Permission Policy
 
-Copyright (c) 2026 Sasanka Sadeep (Avenza Clothing). **All Rights Reserved.**  
-This source code is strictly proprietary. Unauthorized copying, modification, redistribution, or deployment on any other platform is strictly prohibited under DMCA and copyright law.
+Copyright (c) 2026 **Sadeep Sasanka** (Avenza Clothing). **All Rights Reserved.**
+
+This project and source code are strictly proprietary. Unauthorized copying, modification, public display, re-hosting, or deployment on any other platform is strictly prohibited.
+
+### 🤝 Requesting Permission for Use
+Third parties, developers, evaluators, or organizations wishing to use, fork, deploy, or showcase any part of this project **may do so only after obtaining prior written permission** from the copyright holder.
+
+**How to Request Permission:**
+- 📧 **Email**: [sasankasadeep78@gmail.com](mailto:sasankasadeep78@gmail.com)
+- 🐙 **GitHub Profile**: [@Sadeep78](https://github.com/Sadeep78)
+- 📝 **Subject Line**: `[Permission Request] Avenza Clothing Project - <Your Name / Organization>`
+- 📋 **Please Include**:
+  1. Your full name & organization (if applicable)
+  2. The specific intended purpose (Academic review, portfolio evaluation, testing, or commercial)
+  3. The target environment / platform where you wish to run or host it
+
+*Upon approval, written authorization or GitHub collaborator access will be granted.*
+
 
