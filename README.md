@@ -49,5 +49,8 @@ The application runs on `http://localhost:5173` with backend API on `http://loca
 
 ---
 
-## 📄 License
-ISC
+## 📄 License & Copyright Protection
+
+Copyright (c) 2026 Sasanka Sadeep (Avenza Clothing). **All Rights Reserved.**  
+This source code is strictly proprietary. Unauthorized copying, modification, redistribution, or deployment on any other platform is strictly prohibited under DMCA and copyright law.
+
