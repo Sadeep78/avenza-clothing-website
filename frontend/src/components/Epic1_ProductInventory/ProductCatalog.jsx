@@ -34,7 +34,8 @@ export const ProductCatalog = () => {
     setSelectedSizeFilter,
     sortBy,
     setSortBy,
-    formatLKR
+    formatLKR,
+    getProductRatingSummary
   } = useApp();
 
   const filteredProducts = products.filter(product => {
@@ -51,7 +52,11 @@ export const ProductCatalog = () => {
   }).sort((a, b) => {
     if (sortBy === 'price-asc') return a.price - b.price;
     if (sortBy === 'price-desc') return b.price - a.price;
-    if (sortBy === 'rating') return b.rating - a.rating;
+    if (sortBy === 'rating') {
+      const ratingA = Number(getProductRatingSummary ? getProductRatingSummary(a.id)?.averageRating : 0) || 0;
+      const ratingB = Number(getProductRatingSummary ? getProductRatingSummary(b.id)?.averageRating : 0) || 0;
+      return ratingB - ratingA;
+    }
     if (sortBy === 'newest') return b.isNew ? -1 : 1;
     return 0;
   });

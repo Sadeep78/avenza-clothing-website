@@ -477,11 +477,11 @@ export const AppProvider = ({ children }) => {
     await apiService.replyToFeedback(feedbackId, replyMessage, authorName);
   };
 
-  // Calculate Product Rating Summary helper
+  // Calculate Product Rating Summary helper (Based 100% on real customer reviews)
   const getProductRatingSummary = (productId) => {
     const approvedReviews = feedbacks.filter(f => f.productId === productId && (f.status === 'approved' || f.customerId === user?.id));
     if (approvedReviews.length === 0) {
-      return { averageRating: '5.0', totalReviews: 0, countByStar: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 } };
+      return { averageRating: '0.0', totalReviews: 0, countByStar: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 } };
     }
 
     const totalScore = approvedReviews.reduce((sum, f) => sum + f.rating, 0);
@@ -1256,8 +1256,8 @@ export const AppProvider = ({ children }) => {
     const createdProduct = {
       ...newProdData,
       id: `prod-${Date.now()}`,
-      rating: 5.0,
-      reviewsCount: 1,
+      rating: 0.0,
+      reviewsCount: 0,
       isAvailable: newProdData.isAvailable ?? true,
       sku: `ACH-${newProdData.category.toUpperCase().slice(0,2)}-${Math.floor(100 + Math.random() * 900)}`
     };
@@ -1912,5 +1912,5 @@ export const AppProvider = ({ children }) => {
   );
 };
 
-export const useApp = () => useContext(AppContext);
+export const useApp = () => useContext(AppContext) || {};
 

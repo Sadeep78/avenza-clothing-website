@@ -216,11 +216,19 @@ export const ProductDetailModal = () => {
               <span className="text-xs uppercase font-extrabold tracking-widest text-amber-500">
                 {selectedProduct.category} Collection
               </span>
-              <div className="flex items-center gap-1.5 bg-amber-500/10 px-2.5 py-1 rounded-full text-amber-500 font-bold text-xs">
-                <Star className="w-3.5 h-3.5 fill-amber-400" />
-                <span>{summary.totalReviews > 0 ? summary.averageRating : selectedProduct.rating}</span>
-                <span className="text-slate-400 font-normal">({summary.totalReviews > 0 ? summary.totalReviews : selectedProduct.reviewsCount} reviews)</span>
-              </div>
+              {summary.totalReviews > 0 ? (
+                <div className="flex items-center gap-1.5 bg-amber-500/10 px-2.5 py-1 rounded-full text-amber-500 font-bold text-xs">
+                  <Star className="w-3.5 h-3.5 fill-amber-400" />
+                  <span>{summary.averageRating}</span>
+                  <span className="text-slate-400 font-normal">({summary.totalReviews} {summary.totalReviews === 1 ? 'review' : 'reviews'})</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 bg-slate-500/10 px-2.5 py-1 rounded-full text-slate-400 font-medium text-xs">
+                  <Star className="w-3.5 h-3.5 text-slate-400/60" />
+                  <span>No reviews yet</span>
+                  <span className="text-slate-500 font-normal">(0 reviews)</span>
+                </div>
+              )}
             </div>
 
             <div>

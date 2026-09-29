@@ -28,12 +28,16 @@ export const ProductCard = ({ product }) => {
     toggleWishlist, 
     wishlist, 
     formatLKR,
-    user
+    user,
+    getProductRatingSummary
   } = useApp();
 
   const [isHovered, setIsHovered] = useState(false);
   const [activeColor, setActiveColor] = useState(product.colors?.[0] || null);
   const [activeImage, setActiveImage] = useState(product.colors?.[0]?.image || product.image);
+
+  const ratingSummary = getProductRatingSummary ? getProductRatingSummary(product.id) : null;
+  const hasReviews = ratingSummary && ratingSummary.totalReviews > 0;
 
   const isWishlisted = wishlist.includes(product.id);
   const avail = product.isAvailable !== undefined ? product.isAvailable : product.is_available;
@@ -164,10 +168,18 @@ export const ProductCard = ({ product }) => {
             <span className="uppercase font-carnage text-[10px] text-amber-600 dark:text-amber-400 font-bold tracking-wider">
               {product.category}
             </span>
-            <div className="flex items-center gap-1 text-amber-500 font-bold">
-              <Star className="w-3.5 h-3.5 fill-current" />
-              <span>{product.rating}</span>
-            </div>
+            {hasReviews ? (
+              <div className="flex items-center gap-1 text-amber-500 font-bold">
+                <Star className="w-3.5 h-3.5 fill-current" />
+                <span>{ratingSummary.averageRating}</span>
+                <span className="text-[10px] text-zinc-400 font-normal">({ratingSummary.totalReviews})</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1 text-zinc-400 text-[10px] font-medium">
+                <Star className="w-3 h-3 text-zinc-400/50" />
+                <span>No reviews</span>
+              </div>
+            )}
           </div>
 
           {/* Product Name */}
