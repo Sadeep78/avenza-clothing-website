@@ -20,6 +20,17 @@ import { useApp } from '../context/AppContext';
 export const Footer = () => {
   const { setSelectedCategory, setActiveTab } = useApp();
 
+  const handleCategoryClick = (catId) => {
+    setSelectedCategory(catId);
+    setActiveTab('shop');
+    setTimeout(() => {
+      const catalogElement = document.getElementById('catalog-section');
+      if (catalogElement) {
+        catalogElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
+  };
+
   return (
     <footer className="mt-20 border-t border-zinc-200 bg-zinc-100 text-zinc-800 dark:bg-black dark:text-white dark:border-zinc-900 transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -42,22 +53,22 @@ export const Footer = () => {
             </h4>
             <ul className="space-y-2 text-xs text-zinc-600 dark:text-zinc-400 font-medium uppercase tracking-wider">
               <li>
-                <button onClick={() => { setSelectedCategory('men'); setActiveTab('shop'); }} className="hover:text-amber-600 dark:hover:text-white transition-colors cursor-pointer">
+                <button onClick={() => handleCategoryClick('men')} className="hover:text-amber-600 dark:hover:text-white transition-colors cursor-pointer">
                   Men's Clothing
                 </button>
               </li>
               <li>
-                <button onClick={() => { setSelectedCategory('women'); setActiveTab('shop'); }} className="hover:text-amber-600 dark:hover:text-white transition-colors cursor-pointer">
+                <button onClick={() => handleCategoryClick('women')} className="hover:text-amber-600 dark:hover:text-white transition-colors cursor-pointer">
                   Women's Clothing
                 </button>
               </li>
               <li>
-                <button onClick={() => { setSelectedCategory('outerwear'); setActiveTab('shop'); }} className="hover:text-amber-600 dark:hover:text-white transition-colors cursor-pointer">
+                <button onClick={() => handleCategoryClick('outerwear')} className="hover:text-amber-600 dark:hover:text-white transition-colors cursor-pointer">
                   Coats & Jackets
                 </button>
               </li>
               <li>
-                <button onClick={() => { setSelectedCategory('kids'); setActiveTab('shop'); }} className="hover:text-amber-600 dark:hover:text-white transition-colors cursor-pointer">
+                <button onClick={() => handleCategoryClick('kids')} className="hover:text-amber-600 dark:hover:text-white transition-colors cursor-pointer">
                   Kids & Youth
                 </button>
               </li>

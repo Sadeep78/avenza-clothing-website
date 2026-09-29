@@ -62,7 +62,7 @@ export const ProductCatalog = () => {
   });
 
   return (
-    <div id="catalog-section" className="space-y-6 pt-4">
+    <div id="catalog-section" className="scroll-mt-28 space-y-6 pt-4">
       {/* Quick Category & Gender Tabs */}
       <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-zinc-200 dark:border-zinc-800">
         <div className="flex flex-wrap items-center gap-2">

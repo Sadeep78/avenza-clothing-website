@@ -24,10 +24,12 @@ export const BannerHero = () => {
   const handleSelectCategory = (category) => {
     setSelectedCategory(category);
     setActiveTab('shop');
-    const catalogElement = document.getElementById('catalog-section');
-    if (catalogElement) {
-      catalogElement.scrollIntoView({ behavior: 'smooth' });
-    }
+    setTimeout(() => {
+      const catalogElement = document.getElementById('catalog-section');
+      if (catalogElement) {
+        catalogElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
   };
 
   return (

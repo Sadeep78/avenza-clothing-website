@@ -64,6 +64,12 @@ export const Navbar = () => {
   const handleCategoryClick = (catId) => {
     setSelectedCategory(catId);
     setActiveTab('shop');
+    setTimeout(() => {
+      const catalogElement = document.getElementById('catalog-section');
+      if (catalogElement) {
+        catalogElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
   };
 
   return (

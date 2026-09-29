@@ -18,7 +18,18 @@ import { useApp } from '../context/AppContext';
 import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 
 export const CategoryBar = () => {
-  const { categories, selectedCategory, setSelectedCategory } = useApp();
+  const { categories, selectedCategory, setSelectedCategory, setActiveTab } = useApp();
+
+  const handleCategorySelect = (catId) => {
+    setSelectedCategory(catId);
+    if (setActiveTab) setActiveTab('shop');
+    setTimeout(() => {
+      const catalogElement = document.getElementById('catalog-section');
+      if (catalogElement) {
+        catalogElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
+  };
 
   return (
     <div className="mb-12">
@@ -35,7 +46,7 @@ export const CategoryBar = () => {
         
         <div className="flex items-center gap-4">
           <button
-            onClick={() => setSelectedCategory('all')}
+            onClick={() => handleCategorySelect('all')}
             className={`font-carnage text-xs tracking-widest uppercase underline underline-offset-4 transition-colors ${
               selectedCategory === 'all'
                 ? 'text-amber-500 font-black'
@@ -55,7 +66,7 @@ export const CategoryBar = () => {
           return (
             <button
               key={cat.id}
-              onClick={() => setSelectedCategory(cat.id)}
+              onClick={() => handleCategorySelect(cat.id)}
               className={`group relative overflow-hidden h-52 rounded-2xl border text-left transition-all duration-300 shadow-sm ${
                 isSelected
                   ? 'border-amber-500 ring-2 ring-amber-500/50 shadow-xl scale-[1.02]'
