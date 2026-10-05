@@ -1,3 +1,16 @@
+/**
+ * ====================================================================
+ * AVENZA CLOTHING STORE - GLOBAL NOTIFICATION TOAST COMPONENT
+ * File: frontend/src/components/Toast.jsx
+ * 
+ * 🎯 PURPOSE:
+ *   Provides unified, non-intrusive floating feedback messages for:
+ *   - Success events (Item added to cart, profile saved, order placed).
+ *   - Warnings (Low stock notices, validation requirements).
+ *   - Errors (Network dropouts, invalid credentials).
+ * ====================================================================
+ */
+
 import React from 'react';
 import { useApp } from '../context/AppContext';
 import { CheckCircle, AlertCircle, Info, AlertTriangle, X } from 'lucide-react';

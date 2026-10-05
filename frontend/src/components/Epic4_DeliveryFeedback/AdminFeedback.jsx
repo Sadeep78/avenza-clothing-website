@@ -6,13 +6,11 @@
  * 👤 TARGET USER ROLE:
  *   - Store Manager / AVENZA Owner (Customer Feedback Moderation & Official Replies)
  * 
- * 🎯 USER STORIES COVERED:
- *   - AVE-26: As a Manager, I want to view and filter customer ratings and garment reviews, 
- *             so that I can evaluate customer satisfaction and identify service or product quality issues.
- *   - AVE-27: As a Manager, I want to officially reply to customer reviews and concerns, 
- *             so that customer inquiries are addressed, trust is strengthened, and store reputation is maintained.
- *   - AVE-28: As a Manager, I want to moderate customer feedback by approving, hiding, or archiving reviews, 
- *             so that abusive, inappropriate, or obsolete comments do not misrepresent the brand.
+ * 🎯 EPIC: E4 - Delivery and Feedback Management
+ *   Purpose: Customer reviews and ratings moderation console:
+ *   - View and filter customer ratings and garment reviews.
+ *   - Officially reply to customer reviews and inquiries.
+ *   - Moderate customer feedback by approving, hiding, or archiving reviews.
  * ====================================================================
  */
 

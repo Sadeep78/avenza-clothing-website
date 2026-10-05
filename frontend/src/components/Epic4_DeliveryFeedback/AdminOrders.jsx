@@ -6,13 +6,11 @@
  * 👤 TARGET USER ROLE:
  *   - Store Manager / AVENZA Owner (Fulfillment, Courier Allocation, & Live Tracking)
  * 
- * 🎯 USER STORIES COVERED:
- *   - AVE-24: As a Manager, I want to create and assign delivery records for placed orders 
- *             (specifying Standard Courier or Express Same-Day), so that shipments are properly 
- *             dispatched to the appropriate courier partner or rider.
- *   - AVE-25: As a Manager, I want to track and update the delivery status of orders 
- *             (e.g., Processing, Dispatched, In Transit, Delivered), so that customers receive 
- *             accurate real-time tracking information.
+ * 🎯 EPIC: E4 - Delivery and Feedback Management
+ *   Purpose: Delivery oversight console:
+ *   - Create and assign delivery records for placed orders (Standard Courier vs Express Same-Day).
+ *   - Track and update delivery status of orders from dispatch through completion.
+ *   - Real-time customer tracking and delivery fulfillment.
  * ====================================================================
  */
 

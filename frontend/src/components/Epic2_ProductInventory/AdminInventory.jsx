@@ -7,15 +7,15 @@
  *   - Inventory Staff (Primary Operational Role for Stock Operations)
  *   - Administrator (Superuser Oversight)
  * 
- * 🎯 PURPOSE OF THIS COMPONENT:
- *   Full stock inventory management dashboard:
- *   1. Create new apparel item modal with File Upload from PC & Live Preview.
+ * 🎯 EPIC: E2 - Product and Inventory Management
+ *   Purpose: Full stock inventory management dashboard:
+ *   1. Create new apparel item modal with File Upload from PC & Live Preview (INSERT).
  *   2. Dynamic category creation directly inside forms.
  *   3. Price input validation preventing leading zeros.
  *   4. Clickable size toggle buttons (XS to 3XL).
- *   5. Edit existing apparel details modal.
+ *   5. Edit existing apparel details modal (UPDATE).
  *   6. Toggle item availability status (Available vs. Unavailable).
- *   7. Delete product item from store database.
+ *   7. Delete product item from store database (DELETE).
  * ====================================================================
  */
 

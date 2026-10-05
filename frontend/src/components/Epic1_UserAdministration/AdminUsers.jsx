@@ -6,12 +6,12 @@
  * 👤 TARGET USER ROLE:
  *   - Administrator (System Admin User Administration)
  * 
- * 🎯 PURPOSE OF THIS COMPONENT:
- *   User management console for administrators:
+ * 🎯 EPIC: E1 - User and Administration Management
+ *   Purpose: User and customer account management console for administrators:
  *   1. Create user account modal (Name, Email, Password, Role, Status, Phone, City).
  *   2. Edit user role & details modal (`customer`, `inventory_staff`, `manager`, `admin`).
  *   3. Filter users by role and search by name/email.
- *   4. Delete user account.
+ *   4. Delete user account and deactivation controls.
  * ====================================================================
  */
 

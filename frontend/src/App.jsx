@@ -1,3 +1,16 @@
+/**
+ * ====================================================================
+ * AVENZA CLOTHING STORE - MAIN ROOT APPLICATION COMPONENT
+ * File: frontend/src/App.jsx
+ * 
+ * 🏛️ ARCHITECTURE OVERVIEW (4 PROJECT EPICS):
+ *   - Epic E1: User and Administration Management (Users, Profiles, IAM, Settings, Audit Logs, Dashboard)
+ *   - Epic E2: Product and Inventory Management (Catalog, Product Details, Stock Controls, Inventory Staff Portal)
+ *   - Epic E3: Shopping Cart and Payment Management (Cart Drawer, Checkout Modal, Card & COD Payments, Order History)
+ *   - Epic E4: Delivery and Feedback Management (Order Delivery Oversight, Courier Dispatch, Reviews Moderation)
+ * ====================================================================
+ */
+
 import React, { useState, useEffect } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { Navbar } from './components/Navbar';

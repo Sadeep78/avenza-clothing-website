@@ -1,3 +1,16 @@
+/**
+ * ====================================================================
+ * AVENZA CLOTHING STORE - CENTRAL APPLICATION CONTEXT & STATE ENGINE
+ * File: frontend/src/context/AppContext.jsx
+ * 
+ * 🏛️ CORE RESPONSIBILITIES (ACROSS ALL 4 EPICS):
+ *   - E1 (User & Administration): Authentication, user session, RBAC roles, audit logs, system settings.
+ *   - E2 (Product & Inventory): Catalog state, inline stock updates, add/edit/delete product handlers.
+ *   - E3 (Shopping Cart & Payment): Cart management, wishlist, multi-step checkout state, payment processing.
+ *   - E4 (Delivery & Feedback): Fulfillment order state, tracking assignment, customer feedback and moderation.
+ * ====================================================================
+ */
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { INITIAL_PRODUCTS, MOCK_USERS, INITIAL_ORDERS, CATEGORIES, INITIAL_SETTINGS } from '../data/mockData';
 import { apiService } from '../services/api';

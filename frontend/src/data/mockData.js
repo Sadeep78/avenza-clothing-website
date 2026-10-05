@@ -1,3 +1,13 @@
+/**
+ * ====================================================================
+ * AVENZA CLOTHING STORE - SEED DATA & FALLBACK CACHE
+ * File: frontend/src/data/mockData.js
+ * Description: Contains initial seed records for categories, products,
+ *              users, sample orders, and system settings when database
+ *              is first initialized or offline.
+ * ====================================================================
+ */
+
 export const CATEGORIES = [
   {
     id: 'all',

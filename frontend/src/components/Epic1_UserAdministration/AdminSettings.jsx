@@ -1,3 +1,18 @@
+/**
+ * ====================================================================
+ * AVENZA CLOTHING STORE - SYSTEM SETTINGS & CONFIGURATION
+ * File: frontend/src/components/Epic1_UserAdministration/AdminSettings.jsx
+ * 
+ * 👤 TARGET USER ROLE:
+ *   - Administrator (System Superuser)
+ * 
+ * 🎯 EPIC: E1 - User and Administration Management
+ *   Purpose: Allows system administrators to configure store parameters,
+ *            currency, tax rates, shipping fee thresholds, low-stock alerts,
+ *            and emergency maintenance mode schedules.
+ * ====================================================================
+ */
+
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Settings, ShieldCheck, DollarSign, Truck, AlertTriangle, Save, Bell, Power } from 'lucide-react';

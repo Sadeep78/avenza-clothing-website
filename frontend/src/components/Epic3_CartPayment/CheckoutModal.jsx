@@ -6,8 +6,8 @@
  * 👤 TARGET USER ROLE:
  *   - Customer (Completes shipping details, selects delivery speed, & places order)
  * 
- * 🎯 PURPOSE OF THIS COMPONENT:
- *   Multi-step order checkout modal:
+ * 🎯 EPIC: E3 - Shopping Cart and Payment Management
+ *   Purpose: Multi-step order checkout modal:
  *   1. Step 1: Shipping address & recipient contact form.
  *   2. Step 2: Islandwide delivery speed selection (Standard Courier vs. Express Colombo).
  *   3. Step 3: Payment method choice (Visa/Mastercard or Cash on Delivery).

@@ -6,8 +6,8 @@
  * 👤 TARGET USER ROLE:
  *   - Administrator / Store Manager (Store Performance & Revenue Analytics)
  * 
- * 🎯 PURPOSE OF THIS COMPONENT:
- *   Analytics console displaying real-time store metrics:
+ * 🎯 EPIC: E1 - User and Administration Management
+ *   Purpose: Real-time executive management dashboard displaying store metrics:
  *   1. Key metric KPI cards (Total Sales Revenue in LKR, Total Orders, Active Catalog Items).
  *   2. Low-stock inventory alert banners (items with stock <= 5).
  *   3. Sales breakdown charts (Men's, Women's, Outerwear, Kids revenue distribution).
