@@ -910,6 +910,39 @@ app.put('/api/orders/:orderId/items/:orderItemId/cancel', async (req, res) => {
   }
 });
 
+// Helper: cleanly cascade delete an order and its ISA tables
+async function deleteOrderCascade(ordId) {
+  // 1. Delete order items
+  await pool.query('DELETE FROM order_items WHERE order_id = ?', [ordId]);
+
+  // 2. Delete payment ISA hierarchy (card_payment / cash_on_delivery -> payment)
+  try {
+    const [payRows] = await pool.query('SELECT payment_id FROM payment WHERE order_id = ?', [ordId]);
+    for (const p of payRows) {
+      await pool.query('DELETE FROM card_payment WHERE payment_id = ?', [p.payment_id]);
+      await pool.query('DELETE FROM cash_on_delivery WHERE payment_id = ?', [p.payment_id]);
+    }
+    await pool.query('DELETE FROM payment WHERE order_id = ?', [ordId]);
+  } catch (e) {
+    console.warn('Payment cascade delete warning:', e.message);
+  }
+
+  // 3. Delete delivery ISA hierarchy (standard_courier / express_same_day -> delivery)
+  try {
+    const [delRows] = await pool.query('SELECT delivery_id FROM delivery WHERE order_id = ?', [ordId]);
+    for (const d of delRows) {
+      await pool.query('DELETE FROM standard_courier WHERE delivery_id = ?', [d.delivery_id]);
+      await pool.query('DELETE FROM express_same_day WHERE delivery_id = ?', [d.delivery_id]);
+    }
+    await pool.query('DELETE FROM delivery WHERE order_id = ?', [ordId]);
+  } catch (e) {
+    console.warn('Delivery cascade delete warning:', e.message);
+  }
+
+  // 4. Delete the order record itself
+  await pool.query('DELETE FROM orders WHERE id = ?', [ordId]);
+}
+
 /**
  * DELETE COMPLETED / DELIVERED / CANCELLED ORDER ENDPOINT
  * URL: DELETE /api/orders/:id
@@ -932,15 +965,7 @@ app.delete('/api/orders/:id', async (req, res) => {
       });
     }
 
-    // Cleanly delete from child ISA tables first
-    await pool.query('DELETE FROM order_items WHERE order_id = ?', [id]);
-    try { await pool.query('DELETE FROM card_payment WHERE order_id = ?', [id]); } catch (e) {}
-    try { await pool.query('DELETE FROM cash_on_delivery WHERE order_id = ?', [id]); } catch (e) {}
-    try { await pool.query('DELETE FROM standard_courier WHERE order_id = ?', [id]); } catch (e) {}
-    try { await pool.query('DELETE FROM express_same_day WHERE order_id = ?', [id]); } catch (e) {}
-    try { await pool.query('DELETE FROM delivery WHERE order_id = ?', [id]); } catch (e) {}
-    try { await pool.query('DELETE FROM payment WHERE order_id = ?', [id]); } catch (e) {}
-    await pool.query('DELETE FROM orders WHERE id = ?', [id]);
+    await deleteOrderCascade(id);
 
     res.json({ success: true, message: `Order ${id} (${orderStatus}) deleted successfully from database` });
   } catch (error) {
@@ -964,14 +989,7 @@ app.delete('/api/orders-delivered/bulk', async (req, res) => {
     const deliveredIds = deliveredRows.map(r => r.id);
 
     for (let ordId of deliveredIds) {
-      await pool.query('DELETE FROM order_items WHERE order_id = ?', [ordId]);
-      try { await pool.query('DELETE FROM card_payment WHERE order_id = ?', [ordId]); } catch (e) {}
-      try { await pool.query('DELETE FROM cash_on_delivery WHERE order_id = ?', [ordId]); } catch (e) {}
-      try { await pool.query('DELETE FROM standard_courier WHERE order_id = ?', [ordId]); } catch (e) {}
-      try { await pool.query('DELETE FROM express_same_day WHERE order_id = ?', [ordId]); } catch (e) {}
-      try { await pool.query('DELETE FROM delivery WHERE order_id = ?', [ordId]); } catch (e) {}
-      try { await pool.query('DELETE FROM payment WHERE order_id = ?', [ordId]); } catch (e) {}
-      await pool.query('DELETE FROM orders WHERE id = ?', [ordId]);
+      await deleteOrderCascade(ordId);
     }
 
     res.json({ 
@@ -1014,14 +1032,7 @@ app.delete('/api/orders-cancelled/bulk', async (req, res) => {
     const cancelledIds = cancelledRows.map(r => r.id);
 
     for (let ordId of cancelledIds) {
-      await pool.query('DELETE FROM order_items WHERE order_id = ?', [ordId]);
-      try { await pool.query('DELETE FROM card_payment WHERE order_id = ?', [ordId]); } catch (e) {}
-      try { await pool.query('DELETE FROM cash_on_delivery WHERE order_id = ?', [ordId]); } catch (e) {}
-      try { await pool.query('DELETE FROM standard_courier WHERE order_id = ?', [ordId]); } catch (e) {}
-      try { await pool.query('DELETE FROM express_same_day WHERE order_id = ?', [ordId]); } catch (e) {}
-      try { await pool.query('DELETE FROM delivery WHERE order_id = ?', [ordId]); } catch (e) {}
-      try { await pool.query('DELETE FROM payment WHERE order_id = ?', [ordId]); } catch (e) {}
-      await pool.query('DELETE FROM orders WHERE id = ?', [ordId]);
+      await deleteOrderCascade(ordId);
     }
 
     console.log(`✅ Successfully bulk-deleted ${cancelledIds.length} cancelled orders.`);
