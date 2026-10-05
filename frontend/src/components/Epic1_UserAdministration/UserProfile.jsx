@@ -1,7 +1,7 @@
 /**
  * ====================================================================
  * AVENZA CLOTHING STORE - USER PROFILE & ACCOUNT DASHBOARD
- * File: frontend/src/components/Epic2_CustomerUser/UserProfile.jsx
+ * File: frontend/src/components/Epic1_UserAdministration/UserProfile.jsx
  * 
  * 👤 TARGET USER ROLE:
  *   - Logged-in User (Customer, Admin, Inventory Staff, Manager)

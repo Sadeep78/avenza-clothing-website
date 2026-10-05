@@ -1,7 +1,7 @@
 /**
  * ====================================================================
  * AVENZA CLOTHING STORE - ADMIN PRODUCT INVENTORY MANAGEMENT
- * File: frontend/src/components/Epic1_ProductInventory/AdminInventory.jsx
+ * File: frontend/src/components/Epic2_ProductInventory/AdminInventory.jsx
  * 
  * 👤 TARGET USER ROLE:
  *   - Inventory Staff (Primary Operational Role for Stock Operations)

@@ -1,7 +1,7 @@
 /**
  * ====================================================================
  * AVENZA CLOTHING STORE - UNIFIED AUTHENTICATION MODAL COMPONENT
- * File: frontend/src/components/Epic2_CustomerUser/AuthModal.jsx
+ * File: frontend/src/components/Epic1_UserAdministration/AuthModal.jsx
  * 
  * 👤 TARGET USER ROLE:
  *   - All Users (Customers & Admins logging in or registering)

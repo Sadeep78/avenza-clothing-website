@@ -1259,10 +1259,11 @@ export const AppProvider = ({ children }) => {
       rating: 0.0,
       reviewsCount: 0,
       isAvailable: newProdData.isAvailable ?? true,
-      sku: `ACH-${newProdData.category.toUpperCase().slice(0,2)}-${Math.floor(100 + Math.random() * 900)}`
+      sku: `ACH-${(newProdData.category || 'MEN').toUpperCase().slice(0,2)}-${Math.floor(100 + Math.random() * 900)}`
     };
     setProducts(prev => [createdProduct, ...prev]);
-    showToast(`Product "${createdProduct.name}" added to inventory!`, 'success');
+    apiService.createProduct(createdProduct);
+    showToast(`Product "${createdProduct.name}" added to inventory & database!`, 'success');
   };
 
   const updateProductStock = (productId, newStock) => {
@@ -1294,7 +1295,8 @@ export const AppProvider = ({ children }) => {
 
   const deleteProduct = (productId) => {
     setProducts(prev => prev.filter(p => p.id !== productId));
-    showToast('Product deleted from inventory', 'info');
+    apiService.deleteProduct(productId);
+    showToast('Product deleted from inventory & database', 'info');
   };
 
   const updateOrderStatus = (orderId, newStatus) => {

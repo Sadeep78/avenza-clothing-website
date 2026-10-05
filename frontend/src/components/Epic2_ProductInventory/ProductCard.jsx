@@ -1,7 +1,7 @@
 /**
  * ====================================================================
  * AVENZA CLOTHING STORE - PRODUCT CARD COMPONENT
- * File: frontend/src/components/Epic1_ProductInventory/ProductCard.jsx
+ * File: frontend/src/components/Epic2_ProductInventory/ProductCard.jsx
  * 
  * 👤 TARGET USER ROLE:
  *   - Customer / All Users (View cloth card, switch color swatches, toggle wishlist)

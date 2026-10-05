@@ -1,7 +1,7 @@
 /**
  * ====================================================================
  * AVENZA CLOTHING STORE - CUSTOMER ORDER HISTORY & LIVE TRACKER
- * File: frontend/src/components/Epic2_CustomerUser/OrderHistory.jsx
+ * File: frontend/src/components/Epic3_CartPayment/OrderHistory.jsx
  * 
  * 📌 USER STORIES COVERED:
  *   - AVE-22: "Customer views past apparel orders, tracks live courier delivery progress,

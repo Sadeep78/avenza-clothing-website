@@ -1,7 +1,7 @@
 /**
  * ====================================================================
  * AVENZA CLOTHING STORE - ADMIN USER & ROLE MANAGEMENT
- * File: frontend/src/components/Epic2_CustomerUser/AdminUsers.jsx
+ * File: frontend/src/components/Epic1_UserAdministration/AdminUsers.jsx
  * 
  * 👤 TARGET USER ROLE:
  *   - Administrator (System Admin User Administration)

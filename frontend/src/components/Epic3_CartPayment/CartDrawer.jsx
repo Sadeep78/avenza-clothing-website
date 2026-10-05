@@ -19,7 +19,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { X, ShoppingBag, Trash2, ArrowRight, Tag, Plus, Minus, Lock, Edit3 } from 'lucide-react';
-import { QuickAddModal } from '../Epic1_ProductInventory/QuickAddModal';
+import { QuickAddModal } from '../Epic2_ProductInventory/QuickAddModal';
 
 export const CartDrawer = ({ onProceedToCheckout }) => {
   const { 

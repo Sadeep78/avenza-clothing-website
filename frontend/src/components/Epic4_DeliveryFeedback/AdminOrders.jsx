@@ -1,7 +1,7 @@
 /**
  * ====================================================================
  * AVENZA CLOTHING STORE - MANAGER ORDER FULFILLMENT & DELIVERY DISPATCH (AVE-24, AVE-25)
- * File: frontend/src/components/Epic4_ReportingAdmin/AdminOrders.jsx
+ * File: frontend/src/components/Epic4_DeliveryFeedback/AdminOrders.jsx
  * 
  * 👤 TARGET USER ROLE:
  *   - Store Manager / AVENZA Owner (Fulfillment, Courier Allocation, & Live Tracking)

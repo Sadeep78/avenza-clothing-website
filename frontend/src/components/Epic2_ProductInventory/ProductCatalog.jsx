@@ -1,7 +1,7 @@
 /**
  * ====================================================================
  * AVENZA CLOTHING STORE - PRODUCT CATALOG COMPONENT
- * File: frontend/src/components/Epic1_ProductInventory/ProductCatalog.jsx
+ * File: frontend/src/components/Epic2_ProductInventory/ProductCatalog.jsx
  * 
  * 👤 TARGET USER ROLE:
  *   - Customer / All Users (Browse apparel items, filter by size, price, & category)

@@ -159,6 +159,32 @@ export const apiService = {
     }
   },
 
+  // Products: Create New Product (Admin Inventory)
+  async createProduct(productData) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/products`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(productData)
+      });
+      return await res.json();
+    } catch (e) {
+      return null;
+    }
+  },
+
+  // Products: Delete Product (Admin Inventory)
+  async deleteProduct(productId) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/products/${productId}`, {
+        method: 'DELETE'
+      });
+      return await res.json();
+    } catch (e) {
+      return null;
+    }
+  },
+
   // Settings: Get Settings (AVE-10)
   async getSettings() {
     try {

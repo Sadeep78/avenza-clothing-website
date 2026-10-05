@@ -1,7 +1,7 @@
 /**
  * ====================================================================
  * AVENZA CLOTHING STORE - MY FEEDBACK PAGE COMPONENT
- * File: frontend/src/components/Epic2_CustomerUser/MyFeedback.jsx
+ * File: frontend/src/components/Epic4_DeliveryFeedback/MyFeedback.jsx
  * 
  * 📌 USER STORY COVERED:
  *   - AVE-22: "As a Customer, I want to submit feedback or a rating for a 

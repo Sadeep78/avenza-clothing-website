@@ -1,7 +1,7 @@
 /**
  * ====================================================================
  * AVENZA CLOTHING STORE - MANAGER FEEDBACK & CUSTOMER CARE MODERATION (AVE-26, AVE-27, AVE-28)
- * File: frontend/src/components/Epic4_ReportingAdmin/AdminFeedback.jsx
+ * File: frontend/src/components/Epic4_DeliveryFeedback/AdminFeedback.jsx
  * 
  * 👤 TARGET USER ROLE:
  *   - Store Manager / AVENZA Owner (Customer Feedback Moderation & Official Replies)

@@ -1,7 +1,7 @@
 /**
  * ====================================================================
  * AVENZA CLOTHING STORE - QUICK ADD TO CART MODAL COMPONENT
- * File: frontend/src/components/Epic1_ProductInventory/QuickAddModal.jsx
+ * File: frontend/src/components/Epic2_ProductInventory/QuickAddModal.jsx
  * 
  * 👤 TARGET USER ROLE:
  *   - Customer / All Users

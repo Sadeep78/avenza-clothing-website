@@ -1,7 +1,7 @@
 /**
  * ====================================================================
  * AVENZA CLOTHING STORE - PRODUCT DETAIL MODAL COMPONENT
- * File: frontend/src/components/Epic1_ProductInventory/ProductDetailModal.jsx
+ * File: frontend/src/components/Epic2_ProductInventory/ProductDetailModal.jsx
  * 
  * 📌 USER STORY COVERED:
  *   - AVE-22: "Customer views product details, previous customer reviews, ratings,

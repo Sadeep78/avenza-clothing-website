@@ -317,6 +317,95 @@ app.put('/api/products/:id', async (req, res) => {
 });
 
 /**
+ * CREATE NEW PRODUCT ENDPOINT (ADMIN INVENTORY MANAGEMENT)
+ * URL: POST /api/products
+ */
+app.post('/api/products', async (req, res) => {
+  const { 
+    id, 
+    name, 
+    category, 
+    price, 
+    originalPrice, 
+    stock, 
+    sizes, 
+    colors, 
+    image, 
+    description, 
+    fabric, 
+    careInstructions, 
+    isAvailable 
+  } = req.body;
+
+  if (!name || !price) {
+    return res.status(400).json({ error: 'Product name and price are required' });
+  }
+
+  const prodId = id || `prod-${Date.now()}`;
+  const catId = (category || 'men').toLowerCase();
+  const sku = `ACH-${catId.toUpperCase().slice(0, 2)}-${Math.floor(100 + Math.random() * 900)}`;
+
+  try {
+    // 1. Insert product record
+    await pool.query(
+      `INSERT INTO products (id, sku, name, category_id, price_lkr, original_price_lkr, rating, reviews_count, is_new, is_featured, is_available, stock, image_url, description, fabric, care_instructions) 
+       VALUES (?, ?, ?, ?, ?, ?, 0.0, 0, 1, 0, ?, ?, ?, ?, ?, ?)`,
+      [prodId, sku, name, catId, price, originalPrice || null, isAvailable !== false ? 1 : 0, stock || 0, image || '', description || '', fabric || '', careInstructions || '']
+    );
+
+    // 2. Insert sizes into product_sizes
+    const sizeList = Array.isArray(sizes) && sizes.length > 0 ? sizes : ['S', 'M', 'L', 'XL'];
+    const perSizeStock = Math.max(1, Math.floor((stock || 10) / sizeList.length));
+    for (const sz of sizeList) {
+      await pool.query(
+        'INSERT INTO product_sizes (product_id, size_code, stock) VALUES (?, ?, ?)',
+        [prodId, sz, perSizeStock]
+      );
+    }
+
+    // 3. Insert colors into product_colors
+    if (Array.isArray(colors) && colors.length > 0) {
+      for (const col of colors) {
+        await pool.query(
+          'INSERT INTO product_colors (product_id, color_name, color_hex) VALUES (?, ?, ?)',
+          [prodId, col.name || 'Default', col.hex || '#000000']
+        );
+      }
+    }
+
+    res.status(201).json({ success: true, id: prodId, message: 'Product added successfully to database' });
+  } catch (error) {
+    console.error('Create product error:', error);
+    res.status(500).json({ error: 'Failed to create product in database' });
+  }
+});
+
+/**
+ * DELETE PRODUCT ENDPOINT (ADMIN INVENTORY MANAGEMENT)
+ * URL: DELETE /api/products/:id
+ */
+app.delete('/api/products/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // 1. Delete associated sizes and colors
+    await pool.query('DELETE FROM product_sizes WHERE product_id = ?', [id]);
+    await pool.query('DELETE FROM product_colors WHERE product_id = ?', [id]);
+    // 2. Delete product record
+    const [result] = await pool.query('DELETE FROM products WHERE id = ?', [id]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+
+    res.json({ success: true, message: `Product ${id} deleted successfully from database` });
+  } catch (error) {
+    console.error('Delete product error:', error);
+    res.status(500).json({ error: 'Failed to delete product from database' });
+  }
+});
+
+/**
  * TOGGLE PRODUCT AVAILABILITY ENDPOINT (AVE-14)
  * URL: PUT /api/products/:id/availability
  */
@@ -333,9 +422,6 @@ app.put('/api/products/:id/availability', async (req, res) => {
   }
 });
 
-
-
-// ====================================================================
 // 2b. SYSTEM SETTINGS ENDPOINTS (AVE-10)
 // ====================================================================
 

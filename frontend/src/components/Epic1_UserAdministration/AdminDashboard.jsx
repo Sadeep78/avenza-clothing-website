@@ -1,7 +1,7 @@
 /**
  * ====================================================================
  * AVENZA CLOTHING STORE - EXECUTIVE ADMIN ANALYTICS DASHBOARD
- * File: frontend/src/components/Epic4_ReportingAdmin/AdminDashboard.jsx
+ * File: frontend/src/components/Epic1_UserAdministration/AdminDashboard.jsx
  * 
  * 👤 TARGET USER ROLE:
  *   - Administrator / Store Manager (Store Performance & Revenue Analytics)

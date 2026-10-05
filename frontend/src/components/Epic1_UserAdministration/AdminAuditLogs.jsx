@@ -1,7 +1,7 @@
 /**
  * ====================================================================
  * AVENZA CLOTHING STORE - SYSTEM ACTIVITY LOGS & AUDIT TRAILS (AVE-16)
- * File: frontend/src/components/Epic4_ReportingAdmin/AdminAuditLogs.jsx
+ * File: frontend/src/components/Epic1_UserAdministration/AdminAuditLogs.jsx
  * 
  * 👤 TARGET USER ROLE:
  *   - Administrator (System Security & Operational Governance)

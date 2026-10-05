@@ -1,7 +1,7 @@
 /**
  * ====================================================================
  * AVENZA CLOTHING STORE - CUSTOMER FEEDBACK & RATING MODAL COMPONENT
- * File: frontend/src/components/Epic2_CustomerUser/FeedbackModal.jsx
+ * File: frontend/src/components/Epic4_DeliveryFeedback/FeedbackModal.jsx
  * 
  * 📌 USER STORY COVERED:
  *   - AVE-22: "As a Customer, I want to submit feedback or a rating for a 

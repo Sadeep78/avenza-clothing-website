@@ -1,7 +1,7 @@
 /**
  * ====================================================================
  * AVENZA CLOTHING STORE - WISHLIST / FAVORITES DRAWER COMPONENT
- * File: frontend/src/components/Epic2_CustomerUser/WishlistDrawer.jsx
+ * File: frontend/src/components/Epic3_CartPayment/WishlistDrawer.jsx
  * 
  * 📌 USER STORY COVERED:
  *   - Favorites & Saved Wishlist Management
