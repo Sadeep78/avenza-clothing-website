@@ -183,3 +183,34 @@ SELECT
     SUM(CASE WHEN `role` = 'manager' THEN 1 ELSE 0 END) AS total_managers,
     SUM(CASE WHEN `role` = 'admin' THEN 1 ELSE 0 END) AS total_administrators
 FROM `users`;
+
+
+-- ====================================================================
+-- 6. SYSTEM CALCULATIONS & FORMULA SQL QUERIES (EPIC E1)
+-- ====================================================================
+
+-- 6A. Calculation: Active User Engagement Percentage (%)
+-- Formula: (Active Users / Total Users) * 100
+SELECT 
+    COUNT(*) AS total_registered_users,
+    SUM(CASE WHEN `status` = 'active' THEN 1 ELSE 0 END) AS active_users,
+    ROUND((SUM(CASE WHEN `status` = 'active' THEN 1 ELSE 0 END) / COUNT(*)) * 100, 2) AS active_user_percentage
+FROM `users`;
+
+-- 6B. Calculation: Customer-to-Staff Ratio
+-- Formula: Total Customers / (Total Inventory Staff + Total Managers + Total Admins)
+SELECT 
+    SUM(CASE WHEN `role` = 'customer' THEN 1 ELSE 0 END) AS total_customers,
+    SUM(CASE WHEN `role` != 'customer' THEN 1 ELSE 0 END) AS total_staff_and_admin,
+    ROUND(SUM(CASE WHEN `role` = 'customer' THEN 1 ELSE 0 END) / NULLIF(SUM(CASE WHEN `role` != 'customer' THEN 1 ELSE 0 END), 0), 2) AS customer_to_staff_ratio
+FROM `users`;
+
+-- 6C. Calculation: Simulated Store Tax Revenue (Configured % VAT/GST on Gross Sales)
+-- Formula: Gross Store Sales * (Tax Rate / 100)
+SELECT 
+    (SELECT CAST(`setting_value` AS DECIMAL(10,2)) FROM `system_settings` WHERE `setting_key` = 'taxRate') AS configured_tax_rate_pct,
+    SUM(`total_amount_lkr`) AS gross_sales_lkr,
+    ROUND(SUM(`total_amount_lkr`) * ((SELECT CAST(`setting_value` AS DECIMAL(10,2)) FROM `system_settings` WHERE `setting_key` = 'taxRate') / 100), 2) AS calculated_tax_amount_lkr,
+    ROUND(SUM(`total_amount_lkr`) - (SUM(`total_amount_lkr`) * ((SELECT CAST(`setting_value` AS DECIMAL(10,2)) FROM `system_settings` WHERE `setting_key` = 'taxRate') / 100)), 2) AS net_revenue_after_tax_lkr
+FROM `orders`
+WHERE `status` != 'Cancelled';

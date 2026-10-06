@@ -173,3 +173,62 @@ SELECT
     SUM(`stock`) AS total_units_in_warehouse, 
     SUM(`price_lkr` * `stock`) AS total_inventory_valuation_lkr 
 FROM `products`;
+
+
+-- ====================================================================
+-- 6. SYSTEM CALCULATIONS & FORMULA SQL QUERIES (EPIC E2 - INVENTORY)
+-- ====================================================================
+
+-- 6A. Calculation: Multi-Variant Total Stock Aggregation (Per Garment)
+-- Formula: Total Stock = Sum of all individual size stocks (S + M + L + XL + XXL)
+SELECT 
+    p.`id` AS product_id,
+    p.`name` AS product_name,
+    p.`stock` AS master_product_stock,
+    SUM(ps.`stock`) AS calculated_sum_from_sizes,
+    (p.`stock` - SUM(ps.`stock`)) AS variance_difference
+FROM `products` p
+JOIN `product_sizes` ps ON p.`id` = ps.`product_id`
+GROUP BY p.`id`, p.`name`, p.`stock`;
+
+-- 6B. Calculation: Total Warehouse Inventory Valuation in LKR
+-- Formula: Total Valuation = SUM(price_lkr * stock) across all products
+SELECT 
+    COUNT(*) AS total_catalog_items,
+    SUM(`stock`) AS total_garment_pieces,
+    ROUND(AVG(`price_lkr`), 2) AS average_garment_price_lkr,
+    SUM(`price_lkr` * `stock`) AS total_inventory_valuation_lkr
+FROM `products`;
+
+-- 6C. Calculation: Discount Amount and Savings Percentage (%)
+-- Formula: Discount Amount = Original Price - Price
+-- Formula: Discount % = ((Original Price - Price) / Original Price) * 100
+SELECT 
+    `id`,
+    `name`,
+    `original_price_lkr`,
+    `price_lkr`,
+    (`original_price_lkr` - `price_lkr`) AS customer_savings_lkr,
+    ROUND(((`original_price_lkr` - `price_lkr`) / `original_price_lkr`) * 100, 2) AS discount_percentage
+FROM `products` 
+WHERE `original_price_lkr` IS NOT NULL AND `original_price_lkr` > `price_lkr`
+ORDER BY discount_percentage DESC;
+
+-- 6D. Calculation: Out-of-Stock Risk Ratio (Inventory Depletion Metric)
+-- Formula: (Out of Stock Items / Total Items) * 100
+SELECT 
+    COUNT(*) AS total_products,
+    SUM(CASE WHEN `stock` = 0 OR `is_available` = 0 THEN 1 ELSE 0 END) AS out_of_stock_count,
+    ROUND((SUM(CASE WHEN `stock` = 0 OR `is_available` = 0 THEN 1 ELSE 0 END) / COUNT(*)) * 100, 2) AS stockout_percentage
+FROM `products`;
+
+-- 6E. Calculation: Average Stock Units per Size Variant
+-- Formula: Total Stock in Size / Total Products having that Size
+SELECT 
+    `size_code`,
+    COUNT(`product_id`) AS products_offering_size,
+    SUM(`stock`) AS total_stock_in_size,
+    ROUND(AVG(`stock`), 1) AS average_stock_per_product
+FROM `product_sizes`
+GROUP BY `size_code`
+ORDER BY total_stock_in_size DESC;
