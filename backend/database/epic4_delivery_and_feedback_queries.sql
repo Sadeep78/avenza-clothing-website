@@ -183,3 +183,51 @@ SELECT
     COUNT(*) AS total_shipments 
 FROM `delivery` 
 GROUP BY `status`;
+
+
+-- ====================================================================
+-- 6. SYSTEM CALCULATIONS & FORMULA SQL QUERIES (EPIC E4 - DELIVERY & REVIEWS)
+-- ====================================================================
+
+-- 6A. Calculation: Garment Customer Satisfaction Rating Average
+-- Formula: Average Rating = SUM(rating) / COUNT(rating), rounded to 1 decimal
+SELECT 
+    `product_id`, 
+    `product_name`, 
+    COUNT(*) AS total_customer_reviews, 
+    ROUND(AVG(`rating`), 1) AS average_rating_score, 
+    ROUND((SUM(CASE WHEN `rating` = 5 THEN 1 ELSE 0 END) / COUNT(*)) * 100, 1) AS five_star_percentage
+FROM `feedback` 
+WHERE `status` = 'approved' 
+GROUP BY `product_id`, `product_name`;
+
+-- 6B. Calculation: Delivery Fulfillment Success Rate (%)
+-- Formula: (Delivered Orders / Total Dispatched Shipments) * 100
+SELECT 
+    COUNT(*) AS total_dispatched_shipments, 
+    SUM(CASE WHEN `status` = 'Delivered' THEN 1 ELSE 0 END) AS successfully_delivered, 
+    SUM(CASE WHEN `status` != 'Delivered' THEN 1 ELSE 0 END) AS pending_in_transit, 
+    ROUND((SUM(CASE WHEN `status` = 'Delivered' THEN 1 ELSE 0 END) / COUNT(*)) * 100, 2) AS delivery_success_rate_percentage
+FROM `delivery`;
+
+-- 6C. Calculation: Estimated Delivery Date Dispatch Lead Time
+-- Formula: Estimated Arrival = dispatch_date + 3 Business Days
+SELECT 
+    `delivery_id`, 
+    `order_id`, 
+    `delivery_type`, 
+    `dispatch_date`, 
+    DATE_ADD(`dispatch_date`, INTERVAL 3 DAY) AS calculated_estimated_arrival_date, 
+    DATEDIFF(NOW(), `dispatch_date`) AS days_in_transit
+FROM `delivery`;
+
+-- 6D. Calculation: Customer Feedback Sentiment Breakdown
+-- Formula: Positive (4-5 stars), Neutral (3 stars), Negative (1-2 stars)
+SELECT 
+    COUNT(*) AS total_reviews, 
+    SUM(CASE WHEN `rating` >= 4 THEN 1 ELSE 0 END) AS positive_reviews, 
+    SUM(CASE WHEN `rating` = 3 THEN 1 ELSE 0 END) AS neutral_reviews, 
+    SUM(CASE WHEN `rating` <= 2 THEN 1 ELSE 0 END) AS negative_reviews, 
+    ROUND((SUM(CASE WHEN `rating` >= 4 THEN 1 ELSE 0 END) / COUNT(*)) * 100, 1) AS positive_sentiment_pct
+FROM `feedback` 
+WHERE `status` = 'approved';

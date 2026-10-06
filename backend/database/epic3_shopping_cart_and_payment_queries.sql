@@ -201,3 +201,60 @@ SELECT
 FROM `orders` 
 WHERE `status` != 'Cancelled' 
 GROUP BY `payment_method`;
+
+
+-- ====================================================================
+-- 6. SYSTEM CALCULATIONS & FORMULA SQL QUERIES (EPIC E3 - CART & CHECKOUT)
+-- ====================================================================
+
+-- 6A. Calculation: Order Line-Item Subtotals and Order Grand Total
+-- Formula: Line Subtotal = (price_lkr * quantity)
+SELECT 
+    o.`id` AS order_id,
+    o.`customer_name`,
+    oi.`product_name`,
+    oi.`quantity`,
+    oi.`price_lkr`,
+    (oi.`quantity` * oi.`price_lkr`) AS line_item_subtotal_lkr,
+    o.`total_amount_lkr` AS order_grand_total_lkr
+FROM `orders` o
+JOIN `order_items` oi ON o.`id` = oi.`order_id`;
+
+-- 6B. Calculation: Free Shipping Eligibility Threshold Check
+-- Formula: Delivery Fee = IF(Subtotal >= 15000, 0, 350)
+SELECT 
+    `id` AS order_id,
+    `total_amount_lkr`,
+    CASE 
+        WHEN `total_amount_lkr` >= 15000.00 THEN 0.00 
+        ELSE 350.00 
+    END AS applicable_delivery_fee_lkr,
+    CASE 
+        WHEN `total_amount_lkr` >= 15000.00 THEN 'QUALIFIED FOR FREE SHIPPING' 
+        ELSE 'STANDARD COURIER FEE APPLIES' 
+    END AS free_shipping_status
+FROM `orders`;
+
+-- 6C. Calculation: Cash on Delivery (COD) Advance vs Balance Due
+-- Formula: Balance Due = Total Amount - Advance Deposit (Rs. 500)
+SELECT 
+    p.`payment_id`,
+    p.`order_id`,
+    p.`amount` AS total_order_amount_lkr,
+    cod.`advance_amount_lkr`,
+    (p.`amount` - cod.`advance_amount_lkr`) AS calculated_balance_due_lkr,
+    cod.`balance_due_lkr` AS stored_balance_due_lkr,
+    cod.`collection_status`
+FROM `payment` p
+JOIN `cash_on_delivery` cod ON p.`payment_id` = cod.`payment_id`;
+
+-- 6D. Calculation: Average Order Value (AOV)
+-- Formula: AOV = Total Sales Revenue / Total Successful Orders
+SELECT 
+    COUNT(*) AS total_paid_orders,
+    SUM(`total_amount_lkr`) AS total_sales_volume_lkr,
+    ROUND(AVG(`total_amount_lkr`), 2) AS average_order_value_lkr,
+    MIN(`total_amount_lkr`) AS min_order_lkr,
+    MAX(`total_amount_lkr`) AS max_order_lkr
+FROM `orders`
+WHERE `status` != 'Cancelled';
