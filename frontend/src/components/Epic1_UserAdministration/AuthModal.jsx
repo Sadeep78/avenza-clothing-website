@@ -16,9 +16,9 @@
  * ====================================================================
  */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
-import { X, Mail, Lock, User, Phone, ArrowRight, Eye, EyeOff, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { X, Mail, Lock, User, Phone, ArrowRight, Eye, EyeOff, AlertCircle, CheckCircle2, ShieldCheck, Package, Briefcase, ShoppingBag, Sparkles, KeyRound } from 'lucide-react';
 
 export const AuthModal = () => {
   const { isAuthModalOpen, setIsAuthModalOpen, login, register, usersList, pendingCheckout, setPendingCheckout } = useApp();
@@ -37,6 +37,76 @@ export const AuthModal = () => {
   const [touched, setTouched] = useState({});
   const [formError, setFormError] = useState('');
 
+  // Intelligent browser-style auto-fill suggestions state
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isAutoFilled, setIsAutoFilled] = useState(false);
+
+  // Dynamic list of all saved credentials for instantaneous auto-fill (including newly registered accounts)
+  const savedCredentials = useMemo(() => {
+    const list = [];
+    const seenEmails = new Set();
+
+    (usersList || []).forEach(u => {
+      if (!u || !u.email) return;
+      const emailLower = u.email.toLowerCase().trim();
+      if (seenEmails.has(emailLower)) return;
+      seenEmails.add(emailLower);
+
+      const roleBadge = u.role === 'admin' 
+        ? '👑 Admin' 
+        : u.role === 'inventory_staff' 
+        ? '📦 Staff' 
+        : u.role === 'manager' 
+        ? '👔 Manager' 
+        : '🛍️ Customer';
+
+      const roleLabel = u.role === 'admin' 
+        ? 'Admin' 
+        : u.role === 'inventory_staff' 
+        ? 'Staff' 
+        : u.role === 'manager' 
+        ? 'Manager' 
+        : 'Customer';
+
+      list.push({
+        id: u.id,
+        role: roleLabel,
+        badge: roleBadge,
+        name: u.name || 'User',
+        email: u.email,
+        username: u.username || (u.email ? u.email.split('@')[0] : u.name || ''),
+        pass: u.password || 'password123',
+        hint: u.role === 'customer' ? 'Customer Account' : `${roleLabel} Account`
+      });
+    });
+
+    if (!seenEmails.has('customer@avenza.com')) {
+      list.unshift({
+        role: 'Customer',
+        badge: '🛍️ Customer',
+        name: 'Sasanka Perera',
+        email: 'customer@avenza.com',
+        username: 'customer',
+        pass: 'password123',
+        hint: 'Customer Account'
+      });
+    }
+
+    return list;
+  }, [usersList]);
+
+  // Dynamic filter: only show auto-fill when user types at least 3 characters (e.g. "pawa", "cus", "customer")
+  const trimmedId = (identifier || '').toLowerCase().trim();
+  const matchingCredentials = (trimmedId.length >= 3)
+    ? savedCredentials.filter(c => {
+        const q = trimmedId;
+        return (c.role && c.role.toLowerCase().includes(q)) ||
+               (c.email && c.email.toLowerCase().includes(q)) ||
+               (c.username && c.username.toLowerCase().includes(q)) ||
+               (c.name && c.name.toLowerCase().includes(q));
+      })
+    : [];
+
   if (!isAuthModalOpen) return null;
 
   // Real-time validation logic
@@ -47,10 +117,15 @@ export const AuthModal = () => {
       const trimmed = (value || '').trim();
       if (!trimmed) {
         error = 'Full name is required';
-      } else if (trimmed.length < 2) {
-        error = 'Name must be at least 2 characters';
       } else if (!/^[a-zA-Z\s]+$/.test(trimmed)) {
-        error = 'Name can only contain letters (A-Z, a-z)';
+        error = 'Full name can only contain letters (A-Z, a-z) and a space';
+      } else {
+        const words = trimmed.split(/\s+/).filter(Boolean);
+        if (words.length < 2) {
+          error = 'Please enter both first name and last name separated by a space (e.g. John Doe)';
+        } else if (words.some(w => w.length < 2)) {
+          error = 'First and last name must each be at least 2 letters';
+        }
       }
     }
 
@@ -58,17 +133,23 @@ export const AuthModal = () => {
       const raw = value || '';
       const trimmed = raw.trim();
       if (!trimmed) {
-        error = 'Email or username is required';
-      } else if (trimmed.includes('@')) {
-        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-        if (!emailRegex.test(trimmed)) {
-          error = 'Please enter a valid email address';
-        } else if (isRegistering && usersList && usersList.some(u => u.email && u.email.toLowerCase().trim() === trimmed.toLowerCase())) {
-          error = 'This email is already registered. Please use another email or sign in.';
+        error = isRegistering ? 'Email address is required' : 'Email or username is required';
+      } else if (isRegistering && /\s/.test(raw)) {
+        error = 'Email cannot contain spaces. Use underscores (_) instead (e.g. name_surname@example.com)';
+      } else if (isRegistering || trimmed.includes('@')) {
+        if (/\s/.test(raw)) {
+          error = 'Email cannot contain spaces. Use underscores (_) instead';
+        } else {
+          const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+          if (!emailRegex.test(trimmed)) {
+            error = 'Please enter a valid email address (e.g. name_surname@example.com)';
+          } else if (isRegistering && usersList && usersList.some(u => u.email && u.email.toLowerCase().trim() === trimmed.toLowerCase())) {
+            error = 'This email is already registered. Please use another email or sign in.';
+          }
         }
       } else {
-        if (!/^[a-zA-Z]+$/.test(raw)) {
-          error = 'Username can only contain letters (A-Z, a-z). Slashes like "\\" and numbers are not allowed.';
+        if (!/^[a-zA-Z0-9_]+$/.test(raw)) {
+          error = 'Username can only contain letters, numbers, and underscores (_). Slashes like "\\" are not allowed.';
         } else if (trimmed.length < 3) {
           error = 'Username must be at least 3 letters';
         }
@@ -213,7 +294,7 @@ export const AuthModal = () => {
         handleClose();
       }
     } else {
-      const result = login(identifier, password);
+      const result = await login(identifier, password);
       if (result && !result.success) {
         setFormError(result.error || 'Invalid credentials. Please try again.');
       } else {
@@ -235,6 +316,8 @@ export const AuthModal = () => {
     setErrors({});
     setTouched({});
     setFormError('');
+    setShowSuggestions(false);
+    setIsAutoFilled(false);
     setIsRegistering(false);
   };
 
@@ -348,11 +431,12 @@ export const AuthModal = () => {
             </div>
           )}
 
-          {/* Email or Username field */}
-          <div>
+          {/* Email or Username field with Browser-Style Auto-Complete */}
+          <div className="relative">
             <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
               {isRegistering ? 'Email Address' : 'Email Address or Username'} <span className="text-rose-500">*</span>
             </label>
+
             <div className="relative">
               <Mail className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors ${
                 touched.identifier && errors.identifier ? 'text-rose-500' : 'text-slate-400'
@@ -360,10 +444,29 @@ export const AuthModal = () => {
               <input
                 type="text"
                 required
-                placeholder={isRegistering ? "e.g. customer@avenza.com" : "customer, staff, manager or admin"}
+                autoComplete="off"
+                placeholder={isRegistering ? "e.g. customer@avenza.com" : "customer"}
                 value={identifier}
-                onChange={handleIdentifierChange}
-                onBlur={() => handleBlur('identifier')}
+                onFocus={() => { 
+                  if (!isRegistering && identifier.trim().length >= 3) {
+                    setShowSuggestions(true);
+                  }
+                }}
+                onChange={(e) => {
+                  handleIdentifierChange(e);
+                  if (!isRegistering) {
+                    if (e.target.value.trim().length >= 3) {
+                      setShowSuggestions(true);
+                    } else {
+                      setShowSuggestions(false);
+                    }
+                  }
+                  setIsAutoFilled(false);
+                }}
+                onBlur={() => {
+                  handleBlur('identifier');
+                  setTimeout(() => setShowSuggestions(false), 200);
+                }}
                 className={`w-full pl-10 pr-10 py-3 rounded-xl bg-slate-100 dark:bg-zinc-900 border text-sm font-mono text-xs focus:outline-none transition-colors ${
                   touched.identifier && errors.identifier
                     ? 'border-rose-500 focus:border-rose-500 ring-1 ring-rose-500/20'
@@ -376,6 +479,64 @@ export const AuthModal = () => {
                 <CheckCircle2 className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-500" />
               )}
             </div>
+
+            {/* Browser-style Dropdown for Saved Role Credentials (Only when >= 3 letters typed) */}
+            {showSuggestions && !isRegistering && identifier.trim().length >= 3 && matchingCredentials.length > 0 && (
+              <div 
+                className="absolute z-40 left-0 right-0 top-full mt-1.5 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150"
+                onMouseDown={(e) => e.preventDefault()}
+              >
+                <div className="px-3.5 py-2 bg-slate-50 dark:bg-zinc-950/80 border-b border-slate-100 dark:border-zinc-800 flex items-center justify-between text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  <span className="flex items-center gap-1.5">
+                    <KeyRound className="w-3.5 h-3.5 text-amber-500" />
+                    <span>Saved Credentials (Click to Auto-Fill)</span>
+                  </span>
+                  <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold lowercase">
+                    {matchingCredentials.length} match{matchingCredentials.length > 1 ? 'es' : ''}
+                  </span>
+                </div>
+
+                <div className="max-h-56 overflow-y-auto divide-y divide-slate-100 dark:divide-zinc-800/60">
+                  {matchingCredentials.map((c) => (
+                    <button
+                      key={c.id || c.email || c.username}
+                      type="button"
+                      onClick={() => {
+                        setIdentifier(c.email);
+                        setPassword(c.pass);
+                        setErrors({});
+                        setTouched({ identifier: true, password: true });
+                        setFormError('');
+                        setIsAutoFilled(true);
+                        setShowSuggestions(false);
+                      }}
+                      className="w-full px-3.5 py-2.5 text-left hover:bg-amber-500/10 transition-colors flex items-center justify-between group cursor-pointer"
+                    >
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400">
+                            {c.badge}
+                          </span>
+                          <span className="text-[10px] text-slate-400 dark:text-zinc-500 font-normal">
+                            ({c.name})
+                          </span>
+                        </div>
+                        <div className="text-xs font-mono text-slate-600 dark:text-zinc-400 flex items-center gap-1.5">
+                          <span>{c.email}</span>
+                          <span className="text-slate-300 dark:text-zinc-700">•</span>
+                          <span className="text-[10px] text-slate-400">{c.hint}</span>
+                        </div>
+                      </div>
+
+                      <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-1 rounded-lg border border-amber-500/20 opacity-0 group-hover:opacity-100 transition-opacity">
+                        Auto-Fill ↵
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {touched.identifier && errors.identifier && (
               <p className="text-rose-500 text-[11px] font-medium mt-1.5 flex items-center gap-1">
                 <AlertCircle className="w-3 h-3" />
@@ -429,8 +590,14 @@ export const AuthModal = () => {
           {/* Password field with Show/Hide toggle */}
           <div>
             <div className="flex justify-between items-center mb-1">
-              <label className="block text-xs font-bold text-slate-500 uppercase">
-                Password <span className="text-rose-500">*</span>
+              <label className="block text-xs font-bold text-slate-500 uppercase flex items-center gap-2">
+                <span>Password</span>
+                <span className="text-rose-500">*</span>
+                {isAutoFilled && (
+                  <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 lowercase tracking-normal">
+                    auto-filled ✓
+                  </span>
+                )}
               </label>
               {password && (
                 <span className={`text-[10px] font-bold ${

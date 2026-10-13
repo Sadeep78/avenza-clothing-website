@@ -13,6 +13,8 @@ require('dotenv').config({ path: path.join(__dirname, '.env') });
 const express = require('express');
 const cors = require('cors');
 const { pool, testConnection } = require('./db');
+const jwt = require('jsonwebtoken');
+const JWT_SECRET = process.env.JWT_SECRET || 'avenza-super-secret-jwt-key-2026';
 
 // Initialize Express web application
 const app = express();
@@ -37,7 +39,16 @@ app.get('/api/health', async (req, res) => {
 });
 
 // ====================================================================
-// 1. AUTHENTICATION ENDPOINTS
+// EPIC 1: USER ADMINISTRATION & AUTHENTICATION ENDPOINTS
+// User Stories Covered:
+//   - AVE-01: Customer Registration & Login Authentication
+//   - AVE-02: View & Update User Profile & Shipping Addresses
+//   - AVE-08: Administrator Secure Authentication
+//   - AVE-09: Create System User Accounts
+//   - AVE-10: View & Update User Details
+//   - AVE-11: Assign & Change User Roles (RBAC)
+//   - AVE-12: Deactivate & Remove User Accounts
+//   - AVE-13: System Settings & Operational Configurations
 // ====================================================================
 
 /**
@@ -49,33 +60,47 @@ app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
   
   if (!email || !password) {
-    return res.status(400).json({ error: 'Email and password are required' });
+    return res.status(400).json({ error: 'Email/username and password are required' });
   }
 
   try {
-    // Query database for user matching email
-    const [rows] = await pool.query('SELECT * FROM users WHERE email = ?', [email.trim().toLowerCase()]);
+    const cleanId = (email || '').trim().toLowerCase();
+    // Query database for user matching email, full name, or email username prefix
+    const [rows] = await pool.query(
+      `SELECT * FROM users 
+       WHERE LOWER(email) = ? 
+          OR LOWER(name) = ? 
+          OR LOWER(SUBSTRING_INDEX(email, '@', 1)) = ?`,
+      [cleanId, cleanId, cleanId]
+    );
     
-    // If user is not found in database, provide evaluation fallback
+    // If user is not found in database, reject authentication
     if (rows.length === 0) {
-      if (email.includes('admin')) {
-        return res.json({
-          user: { id: 2, name: 'Sasanka P.B.S (Project Admin)', email, role: 'admin', phone: '+94 71 987 6543' }
-        });
-      }
-      return res.json({
-        user: { id: 1, name: email.split('@')[0].toUpperCase(), email, role: 'customer', phone: '+94 77 123 4567' }
-      });
+      return res.status(401).json({ error: 'Invalid email or password entered' });
     }
 
     const user = rows[0];
+
+    // Check if account is active
+    if (user.status === 'inactive') {
+      return res.status(403).json({ error: 'Account is deactivated. Please contact Administrator.' });
+    }
+
     // Validate password match
     if (user.password !== password) {
       return res.status(401).json({ error: 'Invalid password entered' });
     }
 
     delete user.password; // Omit password hash from response
-    res.json({ user });
+
+    // Sign cryptographic JWT session token (24-hour expiration)
+    const token = jwt.sign(
+      { id: user.id, email: user.email, role: user.role, name: user.name },
+      JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    res.json({ user, token });
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: 'Database authentication error' });
@@ -92,7 +117,7 @@ app.post('/api/auth/login', async (req, res) => {
  */
 app.get('/api/users', async (req, res) => {
   try {
-    const [users] = await pool.query('SELECT id, name, email, role, status, phone, address, city, postal_code, created_at FROM users ORDER BY id DESC');
+    const [users] = await pool.query('SELECT id, name, email, password, role, status, phone, address, city, postal_code, created_at FROM users ORDER BY id DESC');
     res.json(users);
   } catch (error) {
     console.error('Fetch users error:', error);
@@ -231,7 +256,15 @@ app.put('/api/users/:id/password', async (req, res) => {
 });
 
 // ====================================================================
-// 2. PRODUCTS & INVENTORY ENDPOINTS
+// EPIC 2: PRODUCT CATALOG & INVENTORY MANAGEMENT ENDPOINTS
+// User Stories Covered:
+//   - AVE-03: Browse Apparel Products & Real-Time Stock Availability
+//   - AVE-18: Add New Apparel Product (Multi-Size, Colors, SKU, Category)
+//   - AVE-19: View Product Details & Stock Information
+//   - AVE-20: Update Product Pricing, Descriptions, Sizes & Stock
+//   - AVE-21: Toggle Real-Time Product Availability
+//   - AVE-22: Archive / Delete Apparel Products
+//   - AVE-26: Inventory Low-Stock Monitoring & Restocking Alerts
 // ====================================================================
 
 /**
@@ -287,6 +320,18 @@ app.put('/api/products/:id/stock', async (req, res) => {
     } else {
       const newStock = Math.max(0, parseInt(stock) || 0);
       await pool.query('UPDATE products SET stock = ?, is_available = IF(? > 0, 1, 0) WHERE id = ?', [newStock, newStock, id]);
+
+      // Proportionally sync product_sizes in database so size stocks match total stock
+      const [sizes] = await pool.query('SELECT id FROM product_sizes WHERE product_id = ?', [id]);
+      if (sizes.length > 0) {
+        const base = Math.floor(newStock / sizes.length);
+        let rem = newStock % sizes.length;
+        for (const s of sizes) {
+          const alloc = base + (rem > 0 ? 1 : 0);
+          if (rem > 0) rem--;
+          await pool.query('UPDATE product_sizes SET stock = ? WHERE id = ?', [alloc, s.id]);
+        }
+      }
     }
     res.json({ success: true, message: 'Product stock updated in database' });
   } catch (error) {
@@ -303,12 +348,32 @@ app.put('/api/products/:id', async (req, res) => {
   const { id } = req.params;
   const { name, category, price, originalPrice, stock, description, fabric, careInstructions, image, isAvailable } = req.body;
 
+  const numPrice = parseFloat(price);
+  const numOrig = originalPrice ? parseFloat(originalPrice) : null;
+  if (numPrice && numOrig !== null && numOrig <= numPrice) {
+    return res.status(400).json({ error: 'Original Price must be strictly greater than Price in LKR' });
+  }
+
   try {
+    const cleanStock = Math.max(0, parseInt(stock) || 0);
     await pool.query(
       `UPDATE products SET name = ?, category_id = ?, price_lkr = ?, original_price_lkr = ?, stock = ?, 
        description = ?, fabric = ?, care_instructions = ?, image_url = ?, is_available = ? WHERE id = ?`,
-      [name, category, price, originalPrice || null, stock, description, fabric, careInstructions, image, isAvailable ? 1 : 0, id]
+      [name, category, price, originalPrice || null, cleanStock, description, fabric, careInstructions, image, isAvailable ? 1 : 0, id]
     );
+
+    // Proportionally sync product_sizes in database
+    const [sizes] = await pool.query('SELECT id FROM product_sizes WHERE product_id = ?', [id]);
+    if (sizes.length > 0) {
+      const base = Math.floor(cleanStock / sizes.length);
+      let rem = cleanStock % sizes.length;
+      for (const s of sizes) {
+        const alloc = base + (rem > 0 ? 1 : 0);
+        if (rem > 0) rem--;
+        await pool.query('UPDATE product_sizes SET stock = ? WHERE id = ?', [alloc, s.id]);
+      }
+    }
+
     res.json({ success: true, message: `Product ${id} updated successfully` });
   } catch (error) {
     console.error('Update product error:', error);
@@ -339,6 +404,12 @@ app.post('/api/products', async (req, res) => {
 
   if (!name || !price) {
     return res.status(400).json({ error: 'Product name and price are required' });
+  }
+
+  const numPrice = parseFloat(price);
+  const numOrig = originalPrice ? parseFloat(originalPrice) : null;
+  if (numPrice && numOrig !== null && numOrig <= numPrice) {
+    return res.status(400).json({ error: 'Original Price must be strictly greater than Price in LKR' });
   }
 
   const prodId = id || `prod-${Date.now()}`;
@@ -465,7 +536,14 @@ app.put('/api/settings', async (req, res) => {
 });
 
 // ====================================================================
-// 3. ORDERS & TRACKING ENDPOINTS
+// EPIC 3: CART, CHECKOUT & PAYMENT TRANSACTION ENDPOINTS
+// User Stories Covered:
+//   - AVE-04: Shopping Bag Item Verification & Real-Time Stock Checks
+//   - AVE-05: Checkout & Order Confirmation with Multi-Item Persistence
+//   - AVE-15: Payment Processing (Card / Cash on Delivery / Bank Slip Upload)
+//   - AVE-17: Inventory Automatic Deduction & ACID Transaction Integrity
+//   - AVE-24: Manager Dashboard Business KPIs (Revenue, AOV, Orders)
+//   - AVE-25: View & Filter Sales Reports by Period
 // ====================================================================
 
 /**
@@ -555,7 +633,11 @@ app.post('/api/orders', async (req, res) => {
     return res.status(400).json({ error: 'Invalid order payload data' });
   }
 
+  const conn = await pool.getConnection();
+
   try {
+    await conn.beginTransaction();
+
     const addrString = typeof shippingAddress === 'object' 
       ? `${shippingAddress.address || ''}, ${shippingAddress.city || ''} ${shippingAddress.postalCode || ''}` 
       : String(shippingAddress || '');
@@ -566,16 +648,57 @@ app.post('/api/orders', async (req, res) => {
       ? (typeof rawSlip === 'object' ? rawSlip.fileData || rawSlip.fileName : String(rawSlip)) 
       : null;
 
+    // 0. Server-Side Stock Verification (Oversell Prevention)
+    for (let item of items) {
+      if (item.id) {
+        if (item.size) {
+          const [sizeRows] = await conn.query('SELECT stock FROM product_sizes WHERE product_id = ? AND size_code = ?', [item.id, item.size]);
+          if (sizeRows && sizeRows.length > 0 && sizeRows[0].stock < item.quantity) {
+            await conn.rollback();
+            conn.release();
+            return res.status(400).json({ 
+              error: `Insufficient stock for "${item.name || item.id}" (Size ${item.size}). Available: ${sizeRows[0].stock}, Requested: ${item.quantity}`,
+              code: 'INSUFFICIENT_STOCK'
+            });
+          }
+        } else {
+          const [prodRows] = await conn.query('SELECT stock FROM products WHERE id = ?', [item.id]);
+          if (prodRows && prodRows.length > 0 && prodRows[0].stock < item.quantity) {
+            await conn.rollback();
+            conn.release();
+            return res.status(400).json({ 
+              error: `Insufficient stock for "${item.name || item.id}". Available: ${prodRows[0].stock}, Requested: ${item.quantity}`,
+              code: 'INSUFFICIENT_STOCK'
+            });
+          }
+        }
+      }
+    }
+
     // 1. Insert order record into database
-    await pool.query(
-      `INSERT INTO orders (id, user_id, customer_name, email, order_date, total_amount_lkr, status, tracking_number, estimated_delivery, shipping_address, payment_method, payment_slip) 
-       VALUES (?, ?, ?, ?, CURDATE(), ?, ?, ?, ?, ?, ?, ?)`,
-      [id, validUserId, customerName, email, totalAmount, status || 'Processing', trackingNumber, estimatedDelivery || null, addrString, paymentMethod, paymentSlip]
-    );
+    try {
+      await conn.query(
+        `INSERT INTO orders (id, user_id, customer_name, email, order_date, total_amount_lkr, status, tracking_number, estimated_delivery, shipping_address, payment_method, payment_slip) 
+         VALUES (?, ?, ?, ?, CURDATE(), ?, ?, ?, ?, ?, ?, ?)`,
+        [id, validUserId, customerName, email, totalAmount, status || 'Processing', trackingNumber, estimatedDelivery || null, addrString, paymentMethod, paymentSlip]
+      );
+    } catch (orderInsertErr) {
+      // Graceful fallback if database schema does not yet have payment_slip column
+      if (orderInsertErr.code === 'ER_BAD_FIELD_ERROR' || orderInsertErr.number === 207 || (orderInsertErr.message && orderInsertErr.message.includes('payment_slip'))) {
+        console.warn('⚠️ orders table missing payment_slip column. Retrying insert without payment_slip...');
+        await conn.query(
+          `INSERT INTO orders (id, user_id, customer_name, email, order_date, total_amount_lkr, status, tracking_number, estimated_delivery, shipping_address, payment_method) 
+           VALUES (?, ?, ?, ?, CURDATE(), ?, ?, ?, ?, ?, ?)`,
+          [id, validUserId, customerName, email, totalAmount, status || 'Processing', trackingNumber, estimatedDelivery || null, addrString, paymentMethod]
+        );
+      } else {
+        throw orderInsertErr;
+      }
+    }
 
     // 2. Insert order items & adjust product inventory counts
     for (let item of items) {
-      await pool.query(
+      await conn.query(
         `INSERT INTO order_items (order_id, product_id, product_name, price_lkr, size, color, quantity, image_url) 
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         [id, item.id, item.name, item.price, item.size, item.color, item.quantity, item.image]
@@ -583,13 +706,13 @@ app.post('/api/orders', async (req, res) => {
 
       // Decrement size-specific stock in product_sizes
       if (item.size) {
-        await pool.query(
+        await conn.query(
           `UPDATE product_sizes SET stock = GREATEST(0, stock - ?) WHERE product_id = ? AND size_code = ?`,
           [item.quantity, item.id, item.size]
         );
       }
 
-      await pool.query(
+      await conn.query(
         `UPDATE products SET stock = GREATEST(0, stock - ?), is_available = IF(stock - ? <= 0, 0, is_available) WHERE id = ?`,
         [item.quantity, item.quantity, item.id]
       );
@@ -604,7 +727,7 @@ app.post('/api/orders', async (req, res) => {
       const last4Match = (paymentMethod || '').match(/\d{4}/);
       const last4 = last4Match ? last4Match[0] : (req.body.paymentDetails?.last4 || (isCard ? '9981' : null));
 
-      await pool.query(
+      await conn.query(
         `INSERT INTO payments (order_id, payment_method, payment_status, amount_lkr, card_last4) 
          VALUES (?, ?, ?, ?, ?)`,
         [id, paymentMethod || 'Visa/Mastercard (LKR)', payStatus, totalAmount || 0, last4]
@@ -623,18 +746,18 @@ app.post('/api/orders', async (req, res) => {
       const last4Match = (paymentMethod || '').match(/\d{4}/);
       const last4 = last4Match ? last4Match[0] : (req.body.paymentDetails?.last4 || '9981');
 
-      await pool.query(
+      await conn.query(
         `INSERT INTO payment (order_id, amount, payment_date, status, payment_type) 
          VALUES (?, ?, NOW(), ?, ?)`,
         [id, totalAmount || 0, payStatus, payType]
       );
       
-      const [payLookup] = await pool.query('SELECT payment_id FROM payment WHERE order_id = ?', [id]);
+      const [payLookup] = await conn.query('SELECT payment_id FROM payment WHERE order_id = ?', [id]);
       const insertedPaymentId = payLookup && payLookup.length > 0 ? payLookup[0].payment_id : null;
 
       if (insertedPaymentId) {
         if (isCard) {
-          await pool.query(
+          await conn.query(
             `INSERT INTO card_payment (payment_id, card_type, last_4_digits, transaction_auth, bank_name)
              VALUES (?, ?, ?, ?, 'Commercial Bank of Ceylon')`,
             [insertedPaymentId, detectedCardType, last4, `AUTH-${Math.floor(100000 + Math.random() * 900000)}`]
@@ -642,7 +765,7 @@ app.post('/api/orders', async (req, res) => {
         } else {
           const advanceLkr = 500.00;
           const balanceDue = Math.max(0, (totalAmount || 0) - advanceLkr);
-          await pool.query(
+          await conn.query(
             `INSERT INTO cash_on_delivery (payment_id, receipt_number, advance_amount_lkr, balance_due_lkr, change_required, cash_collected_by, collection_status, slip_url)
              VALUES (?, ?, ?, ?, 0.00, 'Courier Dispatch Rider', 'Pending_Collection', ?)`,
             [insertedPaymentId, `REC-COD-${Math.floor(1000 + Math.random() * 9000)}`, advanceLkr, balanceDue, paymentSlip]
@@ -659,24 +782,24 @@ app.post('/api/orders', async (req, res) => {
         ? 'Express_Same_Day' 
         : 'Standard_Courier';
 
-      await pool.query(
+      await conn.query(
         `INSERT INTO delivery (order_id, address, dispatch_date, status, delivery_type)
          VALUES (?, ?, NOW(), ?, ?)`,
         [id, addrString, status || 'Processing', delType]
       );
       
-      const [delLookup] = await pool.query('SELECT delivery_id FROM delivery WHERE order_id = ?', [id]);
+      const [delLookup] = await conn.query('SELECT delivery_id FROM delivery WHERE order_id = ?', [id]);
       const insertedDelId = delLookup && delLookup.length > 0 ? delLookup[0].delivery_id : null;
 
       if (insertedDelId) {
         if (delType === 'Standard_Courier') {
-          await pool.query(
+          await conn.query(
             `INSERT INTO standard_courier (delivery_id, courier_partner, tracking_barcode, transit_hub)
              VALUES (?, 'Domex Courier Services', ?, 'Colombo Central Distribution Hub')`,
             [insertedDelId, `BARCODE-${trackingNumber || id}`]
           );
         } else {
-          await pool.query(
+          await conn.query(
             `INSERT INTO express_same_day (delivery_id, rider_name, rider_phone, delivery_time_slot)
              VALUES (?, 'Nuwan Bandara', '+94 77 456 7890', 'Afternoon (2:00 PM - 5:00 PM)')`,
             [insertedDelId]
@@ -697,14 +820,14 @@ app.post('/api/orders', async (req, res) => {
 
         if (cleanAddr) {
           if (validUserId) {
-            await pool.query(
+            await conn.query(
               `UPDATE users 
                SET address = ?, city = ?, postal_code = ?, phone = COALESCE(NULLIF(?, ''), phone)
                WHERE id = ?`,
               [cleanAddr, cleanCity, cleanPostal, cleanPhone, validUserId]
             );
           } else if (email) {
-            await pool.query(
+            await conn.query(
               `UPDATE users 
                SET address = ?, city = ?, postal_code = ?, phone = COALESCE(NULLIF(?, ''), phone)
                WHERE email = ?`,
@@ -717,10 +840,16 @@ app.post('/api/orders', async (req, res) => {
       console.warn('Customer address auto-update note:', addrErr.message);
     }
 
-    console.log(`✅ Order ${id} successfully persisted to SQL Database and ISA tables!`);
+    // Commit ACID transaction
+    await conn.commit();
+    conn.release();
+
+    console.log(`✅ Order ${id} successfully committed to SQL Database with ACID transaction!`);
     res.json({ success: true, message: `Order ${id} saved to database` });
   } catch (error) {
-    console.error('Save order DB error:', error);
+    await conn.rollback();
+    conn.release();
+    console.error('Save order DB error (rolled back):', error);
     res.status(500).json({ error: 'Failed to save order to database' });
   }
 });
@@ -747,6 +876,16 @@ app.put('/api/orders/:id/status', async (req, res) => {
     res.status(500).json({ error: 'Failed to update order status' });
   }
 });
+
+// ====================================================================
+// EPIC 4: ORDER FULFILLMENT & DELIVERY DISPATCH ENDPOINTS
+// User Stories Covered:
+//   - AVE-06: Customer Track Order Delivery Status
+//   - AVE-14: Delivery Records Update (Courier vs Express Same-Day ISA)
+//   - AVE-15: Update Delivery Status (Processing -> Shipped -> Delivered)
+//   - AVE-27: Customer & Order Performance Analytics
+//   - AVE-28: Exportable Order & Fulfillment Reports
+// ====================================================================
 
 /**
  * ASSIGN DELIVERY METHOD & DISPATCH DETAILS (MANAGER PERMISSION - AVE-24)
@@ -1134,7 +1273,11 @@ app.delete('/api/orders-cancelled/bulk', async (req, res) => {
 });
 
 // ====================================================================
-// 5. CUSTOMER FEEDBACK & RATING ENDPOINTS (AVE-22, AVE-25)
+// EPIC 4: CUSTOMER FEEDBACK & REVIEWS ENDPOINTS
+// User Stories Covered:
+//   - AVE-07: Submit Customer Feedback & 1-5 Star Ratings
+//   - AVE-16: Admin / Manager Feedback Moderation & Official Replies
+//   - AVE-22: Product Detail Customer Reviews & Star Display
 // ====================================================================
 
 // In-Memory Seed Feedback Fallback Cache
@@ -1417,9 +1560,89 @@ app.post('/api/feedback/:id/reply', async (req, res) => {
   res.json({ success: true, feedback: target, message: 'Admin reply published successfully!' });
 });
 
+// ====================================================================
+// EPIC 1: SYSTEM SECURITY & AUDIT TRAIL ENDPOINTS
+// User Stories Covered:
+//   - AVE-16: Enterprise System Activity Logs & Audit Trails
+// ====================================================================
+
+/**
+ * GET ALL AUDIT LOGS ENDPOINT
+ * URL: GET /api/audit-logs
+ */
+app.get('/api/audit-logs', async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT * FROM audit_logs ORDER BY created_at DESC LIMIT 200');
+    res.json(rows);
+  } catch (err) {
+    console.error('Fetch audit logs error:', err);
+    res.status(500).json({ error: 'Failed to fetch audit logs' });
+  }
+});
+
+/**
+ * RECORD AUDIT LOG ENTRY ENDPOINT
+ * URL: POST /api/audit-logs
+ */
+app.post('/api/audit-logs', async (req, res) => {
+  const { id, userId, userName, userRole, action, category, target, details, severity } = req.body;
+  try {
+    await pool.query(
+      `INSERT INTO audit_logs (id, user_id, user_name, user_role, action, category, target, details, severity)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id || `log-${Date.now()}`, userId || null, userName || 'System User', userRole || 'admin', action || 'ACTIVITY', category || 'IAM', target || null, details || null, severity || 'INFO']
+    );
+    res.json({ success: true, message: 'Audit log entry recorded' });
+  } catch (err) {
+    console.warn('Audit log write notice:', err.message);
+    res.json({ success: false, note: err.message });
+  }
+});
+
 // Start Express Server listener
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`🚀 Avenza Clothing Express API Server running on port ${PORT}`);
-  testConnection();
+  await testConnection();
+  try {
+    await pool.query('ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_slip LONGTEXT DEFAULT NULL');
+    await pool.query('ALTER TABLE products MODIFY COLUMN image_url LONGTEXT NOT NULL');
+    await pool.query('ALTER TABLE order_items MODIFY COLUMN image_url LONGTEXT DEFAULT NULL');
+  } catch (e) {
+    // Silently continue if column already exists or DB syntax differs
+  }
+  try {
+    // Auto-sync product_sizes with products.stock on start
+    const [allProds] = await pool.query('SELECT id, stock FROM products');
+    for (const p of allProds) {
+      const [pSizes] = await pool.query('SELECT id FROM product_sizes WHERE product_id = ?', [p.id]);
+      if (pSizes.length > 0) {
+        const base = Math.floor(p.stock / pSizes.length);
+        let rem = p.stock % pSizes.length;
+        for (const s of pSizes) {
+          const alloc = base + (rem > 0 ? 1 : 0);
+          if (rem > 0) rem--;
+          await pool.query('UPDATE product_sizes SET stock = ? WHERE id = ?', [alloc, s.id]);
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Size stock alignment note on start:', e.message);
+  }
+  try {
+    await pool.query(`CREATE TABLE IF NOT EXISTS audit_logs (
+      id VARCHAR(50) PRIMARY KEY,
+      user_id INT DEFAULT NULL,
+      user_name VARCHAR(150) DEFAULT NULL,
+      user_role VARCHAR(50) DEFAULT NULL,
+      action VARCHAR(100) NOT NULL,
+      category VARCHAR(50) NOT NULL,
+      target VARCHAR(200) DEFAULT NULL,
+      details TEXT DEFAULT NULL,
+      severity VARCHAR(20) DEFAULT 'INFO',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+  } catch (e) {
+    // Silently continue
+  }
 });
 

@@ -1,8 +1,20 @@
-// API Service module connecting React App to Express + SQL Backend
+/**
+ * ====================================================================
+ * AVENZA CLOTHING STORE - FRONTEND HTTP API SERVICE CLIENT
+ * File: frontend/src/services/api.js
+ * 
+ * 🏛️ SYSTEM INTEGRATION ARCHITECTURE (ACROSS ALL 4 EPICS):
+ *   - Epic 1: User Administration & Authentication (/api/auth, /api/users, /api/settings)
+ *   - Epic 2: Product & Inventory Management (/api/products, /api/categories)
+ *   - Epic 3: Shopping Cart & Payment Management (/api/orders, /api/orders/user)
+ *   - Epic 4: Delivery Dispatch & Customer Feedback (/api/orders/:id/delivery, /api/feedback)
+ * ====================================================================
+ */
+
 const API_BASE_URL = 'http://localhost:5000/api';
 
 export const apiService = {
-  // Health check
+  // System Health & SQL Database Connection Check
   async checkHealth() {
     try {
       const res = await fetch(`${API_BASE_URL}/health`);
@@ -12,7 +24,11 @@ export const apiService = {
     }
   },
 
-  // Auth: Login
+  // ====================================================================
+  // EPIC 1: USER ADMINISTRATION & AUTHENTICATION API METHODS (AVE-01, AVE-08 - AVE-13)
+  // ====================================================================
+
+  // Auth: Login Authentication (AVE-01, AVE-08)
   async login(email, password) {
     try {
       const res = await fetch(`${API_BASE_URL}/auth/login`, {
@@ -105,6 +121,10 @@ export const apiService = {
       return null;
     }
   },
+
+  // ====================================================================
+  // EPIC 2: PRODUCT CATALOG & INVENTORY MANAGEMENT API METHODS (AVE-03, AVE-18 - AVE-22)
+  // ====================================================================
 
   // Products: Get All
   async getProducts() {
@@ -210,6 +230,10 @@ export const apiService = {
     }
   },
 
+  // ====================================================================
+  // EPIC 3: SHOPPING BAG, CART CHECKOUT & PAYMENT API METHODS (AVE-04, AVE-05, AVE-15, AVE-17)
+  // ====================================================================
+
   // Orders: Get All
   async getOrders() {
     try {
@@ -249,6 +273,10 @@ export const apiService = {
       return null;
     }
   },
+
+  // ====================================================================
+  // EPIC 4: ORDER FULFILLMENT, DELIVERY ISA & FEEDBACK API METHODS (AVE-06, AVE-07, AVE-14, AVE-16)
+  // ====================================================================
 
   // Orders: Assign Delivery Details (AVE-24, Standard Courier vs Express Same-Day)
   async assignDelivery(orderId, deliveryData) {

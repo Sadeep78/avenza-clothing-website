@@ -1,3 +1,4 @@
+-- Active: 1789892312121@@localhost@3314@achinis_fashion_db
 -- ====================================================================
 -- AVENZA CLOTHING STORE - EPIC E1: USER & ADMINISTRATION MANAGEMENT
 -- File: backend/database/epic1_user_and_administration_queries.sql
@@ -17,7 +18,7 @@ INSERT INTO `users` (
     `name`, `email`, `password`, `role`, `status`, `phone`, `address`, `city`, `postal_code`, `country`
 ) VALUES (
     'Dilshan Perera', 
-    'dilshan.perera@example.com', 
+    'dilshan.sadaruwan@example.com', 
     'password123', 
     'customer', 
     'active', 
