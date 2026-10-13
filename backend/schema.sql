@@ -24,6 +24,11 @@ DROP TABLE IF EXISTS `categories`;
 DROP TABLE IF EXISTS `users`;
 SET FOREIGN_KEY_CHECKS = 1;
 
+-- ====================================================================
+-- EPIC 1: USER ADMINISTRATION & SYSTEM SETTINGS TABLES
+-- (users, system_settings, audit_logs)
+-- ====================================================================
+
 -- 3. Create Users Table
 CREATE TABLE `users` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
@@ -39,6 +44,11 @@ CREATE TABLE `users` (
   `country` VARCHAR(50) DEFAULT 'Sri Lanka',
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ====================================================================
+-- EPIC 2: PRODUCT CATALOG & INVENTORY TABLES
+-- (categories, products, product_sizes, product_colors)
+-- ====================================================================
 
 -- 4. Create Categories Table
 CREATE TABLE `categories` (
@@ -63,7 +73,7 @@ CREATE TABLE `products` (
   `is_featured` TINYINT(1) DEFAULT 0,
   `is_available` TINYINT(1) DEFAULT 1,
   `stock` INT NOT NULL DEFAULT 10,
-  `image_url` VARCHAR(500) NOT NULL,
+  `image_url` LONGTEXT NOT NULL,
   `description` TEXT DEFAULT NULL,
   `fabric` VARCHAR(200) DEFAULT NULL,
   `care_instructions` VARCHAR(200) DEFAULT NULL,
@@ -95,6 +105,11 @@ CREATE TABLE `product_colors` (
   FOREIGN KEY (`product_id`) REFERENCES `products`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- ====================================================================
+-- EPIC 3: SHOPPING CART, ORDERS & PAYMENT TRANSACTIONS TABLES
+-- (orders, order_items, payment, card_payment, cash_on_delivery)
+-- ====================================================================
+
 -- 8. Create Orders Table
 CREATE TABLE `orders` (
   `id` VARCHAR(50) PRIMARY KEY,
@@ -108,6 +123,7 @@ CREATE TABLE `orders` (
   `estimated_delivery` DATE DEFAULT NULL,
   `shipping_address` TEXT DEFAULT NULL,
   `payment_method` VARCHAR(100) DEFAULT 'Visa/Mastercard (LKR)',
+  `payment_slip` LONGTEXT DEFAULT NULL,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -122,8 +138,22 @@ CREATE TABLE `order_items` (
   `size` VARCHAR(20) NOT NULL,
   `color` VARCHAR(50) NOT NULL,
   `quantity` INT NOT NULL DEFAULT 1,
-  `image_url` VARCHAR(500) DEFAULT NULL,
+  `image_url` LONGTEXT DEFAULT NULL,
   FOREIGN KEY (`order_id`) REFERENCES `orders`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 10. Create Audit Logs Table (AVE-16 Enterprise Compliance)
+CREATE TABLE IF NOT EXISTS `audit_logs` (
+  `id` VARCHAR(50) PRIMARY KEY,
+  `user_id` INT DEFAULT NULL,
+  `user_name` VARCHAR(150) DEFAULT NULL,
+  `user_role` VARCHAR(50) DEFAULT NULL,
+  `action` VARCHAR(100) NOT NULL,
+  `category` VARCHAR(50) NOT NULL,
+  `target` VARCHAR(200) DEFAULT NULL,
+  `details` TEXT DEFAULT NULL,
+  `severity` VARCHAR(20) DEFAULT 'INFO',
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ====================================================================
@@ -186,7 +216,7 @@ INSERT INTO `order_items` (`order_id`, `product_id`, `product_name`, `price_lkr`
 ('ACH-99420', 'prod-w1', 'Silk Cascade Midi Wrap Dress', 18500.00, 'S', 'Emerald Green', 1, 'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?auto=format&fit=crop&w=300&q=80');
 
 -- ====================================================================
--- 6. FEEDBACK & RATINGS TABLE (AVE-22, AVE-25)
+-- EPIC 4: CUSTOMER FEEDBACK & REVIEWS TABLE (AVE-07, AVE-16, AVE-22)
 -- ====================================================================
 CREATE TABLE IF NOT EXISTS `feedback` (
   `id` VARCHAR(50) PRIMARY KEY,
@@ -249,7 +279,8 @@ CREATE TABLE IF NOT EXISTS `cash_on_delivery` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ====================================================================
--- 8. DELIVERY ISA HIERARCHY [Disjoint (d)]
+-- EPIC 4: DELIVERY ISA HIERARCHY TABLES [Disjoint (d)] (AVE-06, AVE-14, AVE-15)
+-- (delivery -> standard_courier / express_same_day)
 -- ====================================================================
 CREATE TABLE IF NOT EXISTS `delivery` (
   `delivery_id` INT AUTO_INCREMENT PRIMARY KEY,

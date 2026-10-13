@@ -24,6 +24,7 @@ import { useApp } from '../../context/AppContext';
 import { Package, Plus, Trash2, Edit, AlertTriangle, Check, ShieldCheck, ToggleLeft, ToggleRight, X, Upload, Tag, Image as ImageIcon } from 'lucide-react';
 
 const ALL_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'];
+const FALLBACK_PRODUCT_IMAGE = 'https://images.unsplash.com/photo-1598033129183-c4f50c736f10?auto=format&fit=crop&w=800&q=80';
 
 export const AdminInventory = () => {
   const { 
@@ -35,7 +36,8 @@ export const AdminInventory = () => {
     deleteProduct, 
     formatLKR,
     categories,
-    addCategory
+    addCategory,
+    showToast
   } = useApp();
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -89,15 +91,44 @@ export const AdminInventory = () => {
     }
   };
 
+  // Price Validation Helpers: Original Price must be strictly greater than Price in LKR
+  const addPriceNum = parseFloat(formData.price) || 0;
+  const addOriginalPriceNum = parseFloat(formData.originalPrice) || 0;
+  const isAddOriginalPriceInvalid = Boolean(formData.price && formData.originalPrice && addOriginalPriceNum <= addPriceNum);
+  const isAddOriginalPriceValid = Boolean(formData.price && formData.originalPrice && addOriginalPriceNum > addPriceNum);
+
+  const editPriceNum = parseFloat(editingProduct?.price) || 0;
+  const editOriginalPriceNum = parseFloat(editingProduct?.originalPrice) || 0;
+  const isEditOriginalPriceInvalid = Boolean(editingProduct?.price && editingProduct?.originalPrice && editOriginalPriceNum <= editPriceNum);
+  const isEditOriginalPriceValid = Boolean(editingProduct?.price && editingProduct?.originalPrice && editOriginalPriceNum > editPriceNum);
+
   const handleAddSubmit = (e) => {
     e.preventDefault();
-    if (!formData.name || !formData.price || parseFloat(formData.price) <= 0) return;
+    const p = parseFloat(formData.price);
+    const op = parseFloat(formData.originalPrice);
+
+    if (!formData.name) {
+      showToast('Please enter apparel product name', 'warning');
+      return;
+    }
+    if (!p || p <= 0) {
+      showToast('Please enter a valid Price in LKR (Rs.)', 'warning');
+      return;
+    }
+    if (!op || op <= 0) {
+      showToast('Please enter an Original Price (LKR)', 'warning');
+      return;
+    }
+    if (op <= p) {
+      showToast('Original Price must be greater than Price in LKR (Rs.)!', 'error');
+      return;
+    }
 
     addProduct({
       name: formData.name,
       category: formData.category,
-      price: parseFloat(formData.price),
-      originalPrice: parseFloat(formData.originalPrice || formData.price * 1.25),
+      price: p,
+      originalPrice: op,
       stock: parseInt(formData.stock) || 0,
       sizes: formData.sizes.length > 0 ? formData.sizes : ['M'],
       colors: [
@@ -142,13 +173,32 @@ export const AdminInventory = () => {
 
   const handleEditSubmit = (e) => {
     e.preventDefault();
-    if (!editingProduct || !editingProduct.name || parseFloat(editingProduct.price) <= 0) return;
+    if (!editingProduct) return;
+    const p = parseFloat(editingProduct.price);
+    const op = parseFloat(editingProduct.originalPrice);
+
+    if (!editingProduct.name) {
+      showToast('Please enter apparel product name', 'warning');
+      return;
+    }
+    if (!p || p <= 0) {
+      showToast('Please enter a valid Price in LKR (Rs.)', 'warning');
+      return;
+    }
+    if (!op || op <= 0) {
+      showToast('Please enter an Original Price (LKR)', 'warning');
+      return;
+    }
+    if (op <= p) {
+      showToast('Original Price must be greater than Price in LKR (Rs.)!', 'error');
+      return;
+    }
 
     updateProductDetails(editingProduct.id, {
       name: editingProduct.name,
       category: editingProduct.category,
-      price: parseFloat(editingProduct.price),
-      originalPrice: parseFloat(editingProduct.originalPrice || editingProduct.price * 1.2),
+      price: p,
+      originalPrice: op,
       stock: parseInt(editingProduct.stock) || 0,
       sizes: editingProduct.sizes,
       description: editingProduct.description,
@@ -197,7 +247,12 @@ export const AdminInventory = () => {
             {products.filter(p => p.stock <= 5).map(item => (
               <div key={item.id} className="p-3.5 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 flex items-center justify-between shadow-sm">
                 <div className="flex items-center gap-3">
-                  <img src={item.image} alt={item.name} className="w-10 h-12 rounded-lg object-cover" />
+                  <img 
+                    src={item.image || item.image_url || FALLBACK_PRODUCT_IMAGE} 
+                    alt={item.name} 
+                    onError={(e) => { e.target.onerror = null; e.target.src = FALLBACK_PRODUCT_IMAGE; }}
+                    className="w-10 h-12 rounded-lg object-cover" 
+                  />
                   <div>
                     <p className="text-xs font-bold uppercase">{item.name}</p>
                     <span className="text-[10px] text-amber-500 font-extrabold">Only {item.stock} units left!</span>
@@ -244,8 +299,9 @@ export const AdminInventory = () => {
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-3">
                         <img 
-                          src={item.image} 
+                          src={item.image || item.image_url || FALLBACK_PRODUCT_IMAGE} 
                           alt={item.name} 
+                          onError={(e) => { e.target.onerror = null; e.target.src = FALLBACK_PRODUCT_IMAGE; }}
                           className="w-12 h-14 rounded-xl object-cover border border-slate-200 dark:border-zinc-800" 
                         />
                         <div>
@@ -471,34 +527,64 @@ export const AdminInventory = () => {
                 </div>
               </div>
 
-              {/* Price Fields with Prevent Leading Zeros */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Price in LKR (Rs.)</label>
-                  <input
-                    type="number"
-                    min="1"
-                    step="50"
-                    required
-                    placeholder="4800"
-                    value={formData.price}
-                    onChange={e => setFormData({ ...formData, price: sanitizePrice(e.target.value) })}
-                    className="w-full p-3 rounded-xl bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-sm font-mono text-amber-500 font-bold"
-                  />
+              {/* Price Fields with Prevent Leading Zeros & Required Validations */}
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold uppercase text-slate-500 mb-1">
+                      Price in LKR (Rs.) <span className="text-amber-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      step="any"
+                      required
+                      placeholder="e.g. 4800"
+                      value={formData.price}
+                      onChange={e => setFormData({ ...formData, price: sanitizePrice(e.target.value) })}
+                      className="w-full p-3 rounded-xl bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-sm font-mono text-amber-500 font-bold"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold uppercase text-slate-500 mb-1">
+                      Original Price (LKR) <span className="text-amber-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      step="any"
+                      required
+                      placeholder="e.g. 6000"
+                      value={formData.originalPrice}
+                      onChange={e => setFormData({ ...formData, originalPrice: sanitizePrice(e.target.value) })}
+                      className={`w-full p-3 rounded-xl bg-slate-100 dark:bg-zinc-900 border text-sm font-mono transition-colors ${
+                        isAddOriginalPriceInvalid 
+                          ? 'border-rose-500 ring-2 ring-rose-500/20 text-rose-500 font-bold' 
+                          : isAddOriginalPriceValid
+                          ? 'border-emerald-500/80 text-slate-900 dark:text-white'
+                          : 'border-slate-200 dark:border-zinc-800 text-slate-900 dark:text-white'
+                      }`}
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Original Price (LKR)</label>
-                  <input
-                    type="number"
-                    min="1"
-                    step="50"
-                    placeholder="6000"
-                    value={formData.originalPrice}
-                    onChange={e => setFormData({ ...formData, originalPrice: sanitizePrice(e.target.value) })}
-                    className="w-full p-3 rounded-xl bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-sm font-mono"
-                  />
-                </div>
+                {/* Real-time validation warning / discount indicator */}
+                {isAddOriginalPriceInvalid && (
+                  <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center gap-2 text-xs font-bold text-rose-600 dark:text-rose-400 animate-in fade-in">
+                    <AlertTriangle className="w-4 h-4 shrink-0 text-rose-500" />
+                    <span>Original Price must be greater than Price in LKR (must be &gt; {formatLKR(Number(formData.price || 0))})</span>
+                  </div>
+                )}
+                {isAddOriginalPriceValid && (
+                  <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between text-xs font-bold text-emerald-600 dark:text-emerald-400 animate-in fade-in">
+                    <div className="flex items-center gap-1.5">
+                      <Check className="w-4 h-4 text-emerald-500" />
+                      <span>Valid Price Configuration ({Math.round(((addOriginalPriceNum - addPriceNum) / addOriginalPriceNum) * 100)}% OFF)</span>
+                    </div>
+                    <span className="font-mono">Saves {formatLKR(addOriginalPriceNum - addPriceNum)}</span>
+                  </div>
+                )}
               </div>
 
               {/* Clickable Size Selector Buttons */}
@@ -536,7 +622,12 @@ export const AdminInventory = () => {
                 <div className="flex flex-col sm:flex-row gap-4 items-center p-3.5 rounded-2xl bg-slate-50 dark:bg-zinc-900 border border-dashed border-slate-300 dark:border-zinc-800">
                   <div className="relative w-20 h-24 rounded-xl overflow-hidden bg-slate-200 dark:bg-zinc-800 shrink-0 border border-slate-200 dark:border-zinc-700 shadow-sm">
                     {formData.image ? (
-                      <img src={formData.image} alt="Preview" className="w-full h-full object-cover" />
+                      <img 
+                        src={formData.image} 
+                        alt="Preview" 
+                        className="w-full h-full object-cover" 
+                        onError={(e) => { e.target.onerror = null; e.target.src = FALLBACK_PRODUCT_IMAGE; }}
+                      />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-slate-400 text-[10px]">No Image</div>
                     )}
@@ -599,7 +690,8 @@ export const AdminInventory = () => {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-3 rounded-xl bg-amber-500 text-black font-black text-xs uppercase cursor-pointer"
+                  disabled={isAddOriginalPriceInvalid}
+                  className="flex-1 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-xs uppercase cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-md transition-all"
                 >
                   Save New Product
                 </button>
@@ -705,32 +797,62 @@ export const AdminInventory = () => {
                 </div>
               </div>
 
-              {/* Price Fields with Prevent Leading Zeros */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Price (LKR)</label>
-                  <input
-                    type="number"
-                    min="1"
-                    step="50"
-                    required
-                    value={editingProduct.price}
-                    onChange={e => setEditingProduct({ ...editingProduct, price: sanitizePrice(e.target.value) })}
-                    className="w-full p-3 rounded-xl bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-sm font-mono text-amber-500 font-bold"
-                  />
+              {/* Price Fields with Prevent Leading Zeros & Required Validations */}
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold uppercase text-slate-500 mb-1">
+                      Price in LKR (Rs.) <span className="text-amber-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      step="any"
+                      required
+                      value={editingProduct.price}
+                      onChange={e => setEditingProduct({ ...editingProduct, price: sanitizePrice(e.target.value) })}
+                      className="w-full p-3 rounded-xl bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-sm font-mono text-amber-500 font-bold"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold uppercase text-slate-500 mb-1">
+                      Original Price (LKR) <span className="text-amber-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      step="any"
+                      required
+                      value={editingProduct.originalPrice || ''}
+                      onChange={e => setEditingProduct({ ...editingProduct, originalPrice: sanitizePrice(e.target.value) })}
+                      className={`w-full p-3 rounded-xl bg-slate-100 dark:bg-zinc-900 border text-sm font-mono transition-colors ${
+                        isEditOriginalPriceInvalid 
+                          ? 'border-rose-500 ring-2 ring-rose-500/20 text-rose-500 font-bold' 
+                          : isEditOriginalPriceValid
+                          ? 'border-emerald-500/80 text-slate-900 dark:text-white'
+                          : 'border-slate-200 dark:border-zinc-800 text-slate-900 dark:text-white'
+                      }`}
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Original Price (LKR)</label>
-                  <input
-                    type="number"
-                    min="1"
-                    step="50"
-                    value={editingProduct.originalPrice || ''}
-                    onChange={e => setEditingProduct({ ...editingProduct, originalPrice: sanitizePrice(e.target.value) })}
-                    className="w-full p-3 rounded-xl bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-sm font-mono"
-                  />
-                </div>
+                {/* Real-time validation warning / discount indicator */}
+                {isEditOriginalPriceInvalid && (
+                  <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center gap-2 text-xs font-bold text-rose-600 dark:text-rose-400 animate-in fade-in">
+                    <AlertTriangle className="w-4 h-4 shrink-0 text-rose-500" />
+                    <span>Original Price must be greater than Price in LKR (must be &gt; {formatLKR(Number(editingProduct.price || 0))})</span>
+                  </div>
+                )}
+                {isEditOriginalPriceValid && (
+                  <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between text-xs font-bold text-emerald-600 dark:text-emerald-400 animate-in fade-in">
+                    <div className="flex items-center gap-1.5">
+                      <Check className="w-4 h-4 text-emerald-500" />
+                      <span>Valid Price Configuration ({Math.round(((editOriginalPriceNum - editPriceNum) / editOriginalPriceNum) * 100)}% OFF)</span>
+                    </div>
+                    <span className="font-mono">Saves {formatLKR(editOriginalPriceNum - editPriceNum)}</span>
+                  </div>
+                )}
               </div>
 
               {/* Clickable Size Selector Buttons */}
@@ -769,7 +891,12 @@ export const AdminInventory = () => {
                 <div className="flex flex-col sm:flex-row gap-4 items-center p-3.5 rounded-2xl bg-slate-50 dark:bg-zinc-900 border border-dashed border-slate-300 dark:border-zinc-800">
                   <div className="relative w-20 h-24 rounded-xl overflow-hidden bg-slate-200 dark:bg-zinc-800 shrink-0 border border-slate-200 dark:border-zinc-700 shadow-sm">
                     {editingProduct.image ? (
-                      <img src={editingProduct.image} alt="Preview" className="w-full h-full object-cover" />
+                      <img 
+                        src={editingProduct.image} 
+                        alt="Preview" 
+                        className="w-full h-full object-cover" 
+                        onError={(e) => { e.target.onerror = null; e.target.src = FALLBACK_PRODUCT_IMAGE; }}
+                      />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-slate-400 text-[10px]">No Image</div>
                     )}
@@ -831,7 +958,8 @@ export const AdminInventory = () => {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-3 rounded-xl bg-amber-500 text-black font-black text-xs uppercase cursor-pointer"
+                  disabled={isEditOriginalPriceInvalid}
+                  className="flex-1 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-xs uppercase cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-md transition-all"
                 >
                   Update Product Details
                 </button>

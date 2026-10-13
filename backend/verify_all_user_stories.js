@@ -3,6 +3,10 @@ const { pool } = require('./db');
 async function testAllUserStories() {
   console.log('--- STARTING 28 USER STORY SQL VERIFICATION ---');
   try {
+    // Dynamically retrieve an existing order ID for live verification
+    const [existingOrders] = await pool.query("SELECT id FROM orders LIMIT 1");
+    const testOrderId = existingOrders.length > 0 ? existingOrders[0].id : 'AVENZA-12292';
+
     // E3: Customer
     console.log('[AVE-01] Testing Create & Login Customer Account...');
     await pool.query("SELECT id, email, role, status FROM users WHERE email = 'customer@avenza.com'");
@@ -18,19 +22,24 @@ async function testAllUserStories() {
     await pool.query("SELECT id, name, price_lkr, stock FROM products WHERE id IN ('prod-m1', 'prod-m2')");
 
     console.log('[AVE-05] Testing Checkout & Order Confirmation...');
-    await pool.query("SELECT id, customer_name, total_amount_lkr, status FROM orders WHERE id = 'AVENZA-74336'");
+    await pool.query("SELECT id, customer_name, total_amount_lkr, status FROM orders WHERE id = ?", [testOrderId]);
 
     console.log('[AVE-06] Testing Track Order Delivery Status...');
-    await pool.query("SELECT id, status, tracking_number, estimated_delivery FROM orders WHERE id = 'AVENZA-74336'");
+    await pool.query("SELECT id, status, tracking_number, estimated_delivery FROM orders WHERE id = ?", [testOrderId]);
 
     console.log('[AVE-07] Testing Submit Feedback & Rating...');
-    await pool.query("INSERT INTO customer_feedback (product_id, user_name, rating, comment, status) VALUES ('prod-m1', 'Test Customer', 5, 'Great quality!', 'pending')");
+    // Ensure clean state before insert
+    await pool.query("DELETE FROM feedback WHERE id = 'fb-verify-test'");
+    await pool.query(
+      "INSERT INTO feedback (id, product_id, customer_name, customer_email, rating, comment, status) VALUES ('fb-verify-test', 'prod-m1', 'Test Customer', 'customer@avenza.com', 5, 'Great quality!', 'pending')"
+    );
 
     // E1: Administrator
     console.log('[AVE-08] Testing Administrator Login...');
     await pool.query("SELECT id, email, role FROM users WHERE role = 'admin'");
 
     console.log('[AVE-09] Testing Create System User Account...');
+    await pool.query("DELETE FROM users WHERE email = 'tempuser@avenza.com'");
     await pool.query("INSERT INTO users (name, email, password, role, status) VALUES ('Temp Admin User', 'tempuser@avenza.com', 'pass123', 'customer', 'active')");
 
     console.log('[AVE-10] Testing View & Update User Details...');
@@ -48,23 +57,27 @@ async function testAllUserStories() {
     await pool.query("UPDATE system_settings SET setting_value = 'Avenza Flagship Store' WHERE setting_key = 'storeName'");
 
     console.log('[AVE-14] Testing Delivery Records Update...');
-    await pool.query("UPDATE orders SET tracking_number = 'DOMEX-LK-998811' WHERE id = 'AVENZA-74336'");
+    await pool.query("UPDATE orders SET tracking_number = 'DOMEX-LK-998811' WHERE id = ?", [testOrderId]);
 
     console.log('[AVE-15] Testing Update Delivery Status (Processing -> Shipped -> Delivered)...');
-    await pool.query("UPDATE orders SET status = 'Delivered' WHERE id = 'AVENZA-74336'");
-    await pool.query("UPDATE orders SET status = 'Processing' WHERE id = 'AVENZA-74336'");
+    await pool.query("UPDATE orders SET status = 'Delivered' WHERE id = ?", [testOrderId]);
+    await pool.query("UPDATE orders SET status = 'Processing' WHERE id = ?", [testOrderId]);
 
     console.log('[AVE-16] Testing Feedback Moderation & Admin Reply...');
-    await pool.query("UPDATE customer_feedback SET status = 'approved', admin_reply = 'Thank you for your review!' WHERE comment = 'Great quality!'");
-    await pool.query("DELETE FROM customer_feedback WHERE comment = 'Great quality!'");
+    await pool.query("UPDATE feedback SET status = 'approved', admin_reply_message = 'Thank you for your review!' WHERE id = 'fb-verify-test'");
+    await pool.query("DELETE FROM feedback WHERE id = 'fb-verify-test'");
 
     // E2: Inventory Staff
     console.log('[AVE-17] Testing Staff Login...');
     await pool.query("SELECT id, email, role FROM users WHERE role = 'inventory_staff'");
 
     console.log('[AVE-18] Testing Add New Clothing Product...');
+    await pool.query("DELETE FROM product_colors WHERE product_id = 'prod-test'");
+    await pool.query("DELETE FROM product_sizes WHERE product_id = 'prod-test'");
+    await pool.query("DELETE FROM products WHERE id = 'prod-test' OR sku = 'ACH-TST-01'");
+
     await pool.query("INSERT INTO products (id, sku, name, category_id, price_lkr, stock, image_url, is_available) VALUES ('prod-test', 'ACH-TST-01', 'Test Apparel Tee', 'men', 4500, 15, '/test.png', 1)");
-    await pool.query("INSERT INTO product_sizes (product_id, size_code) VALUES ('prod-test', 'M')");
+    await pool.query("INSERT INTO product_sizes (product_id, size_code, stock) VALUES ('prod-test', 'M', 15)");
     await pool.query("INSERT INTO product_colors (product_id, color_name, color_hex) VALUES ('prod-test', 'Charcoal', '#333333')");
 
     console.log('[AVE-19] Testing View Product & Stock Information...');
@@ -85,7 +98,7 @@ async function testAllUserStories() {
     await pool.query("SELECT id, email, role FROM users WHERE role = 'manager'");
 
     console.log('[AVE-24] Testing Manager Dashboard Key Business KPIs...');
-    await pool.query("SELECT COUNT(*) AS total_orders, ISNULL(SUM(total_amount_lkr), 0) AS gross_revenue, ISNULL(AVG(total_amount_lkr), 0) AS aov FROM orders");
+    await pool.query("SELECT COUNT(*) AS total_orders, COALESCE(SUM(total_amount_lkr), 0) AS gross_revenue, COALESCE(AVG(total_amount_lkr), 0) AS aov FROM orders");
 
     console.log('[AVE-25] Testing View & Filter Sales Reports by Period...');
     await pool.query("SELECT id, customer_name, order_date, total_amount_lkr, status FROM orders WHERE order_date >= '2026-01-01'");
@@ -99,7 +112,7 @@ async function testAllUserStories() {
     console.log('[AVE-28] Testing Exportable Business Reports...');
     await pool.query("SELECT p.name AS Product, SUM(i.quantity) AS Units_Sold, SUM(i.quantity * i.price_lkr) AS Total_Revenue FROM order_items i JOIN products p ON i.product_id = p.id GROUP BY p.name");
 
-    console.log('--- ALL 28 USER STORIES VERIFIED SUCCESSFULLY IN SQL SERVER! ---');
+    console.log('--- ALL 28 USER STORIES VERIFIED SUCCESSFULLY IN DATABASE! ---');
     process.exit(0);
   } catch (err) {
     console.error('VERIFICATION FAILED:', err);

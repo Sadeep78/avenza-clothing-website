@@ -66,7 +66,7 @@ CREATE TABLE [dbo].[products] (
     [is_featured] BIT DEFAULT 0,
     [is_available] BIT DEFAULT 1,
     [stock] INT NOT NULL DEFAULT 10,
-    [image_url] NVARCHAR(500) NOT NULL,
+    [image_url] NVARCHAR(MAX) NOT NULL,
     [description] NVARCHAR(MAX) NULL,
     [fabric] NVARCHAR(200) NULL,
     [care_instructions] NVARCHAR(200) NULL,
@@ -112,6 +112,7 @@ CREATE TABLE [dbo].[orders] (
     [estimated_delivery] DATE NULL,
     [shipping_address] NVARCHAR(MAX) NULL,
     [payment_method] NVARCHAR(100) DEFAULT 'Visa/Mastercard (LKR)',
+    [payment_slip] NVARCHAR(MAX) NULL,
     [created_at] DATETIME DEFAULT GETDATE()
 );
 GO
@@ -126,7 +127,22 @@ CREATE TABLE [dbo].[order_items] (
     [size] NVARCHAR(20) NOT NULL,
     [color] NVARCHAR(50) NOT NULL,
     [quantity] INT NOT NULL DEFAULT 1,
-    [image_url] NVARCHAR(500) NULL
+    [image_url] NVARCHAR(MAX) NULL
+);
+GO
+
+-- 10. Create Audit Logs Table (AVE-16 Enterprise Compliance)
+CREATE TABLE [dbo].[audit_logs] (
+    [id] NVARCHAR(50) PRIMARY KEY,
+    [user_id] INT NULL FOREIGN KEY REFERENCES [dbo].[users]([id]),
+    [user_name] NVARCHAR(150) NULL,
+    [user_role] NVARCHAR(50) NULL,
+    [action] NVARCHAR(100) NOT NULL,
+    [category] NVARCHAR(50) NOT NULL,
+    [target] NVARCHAR(200) NULL,
+    [details] NVARCHAR(MAX) NULL,
+    [severity] NVARCHAR(20) DEFAULT 'INFO',
+    [created_at] DATETIME DEFAULT GETDATE()
 );
 GO
 

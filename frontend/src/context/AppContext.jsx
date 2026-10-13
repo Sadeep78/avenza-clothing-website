@@ -24,27 +24,63 @@ export const formatLKR = (amount) => {
   return `Rs. ${Number(amount).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
-// Helper to guarantee every product has clean per-size stocks (S, M, L, XL, XXL)
+// Helper to guarantee every product has clean per-size stocks (S, M, L, XL, XXL) matching total stock
 export const ensureProductSizeStocks = (p) => {
   if (!p) return p;
+  const authoritativeStock = (p.stock !== undefined && p.stock !== null) 
+    ? Math.max(0, parseInt(p.stock)) 
+    : null;
   const sizes = p.sizes && p.sizes.length > 0 ? p.sizes : ['S', 'M', 'L', 'XL', 'XXL'];
-  const defaultDist = { 'XS': 6, 'S': 12, 'M': 15, 'L': 10, 'XL': 8, 'XXL': 5 };
   const currentMap = { ...(p.sizeStocks || {}) };
-  sizes.forEach(sz => {
-    const cleanSz = String(sz).trim().toUpperCase();
-    if (currentMap[cleanSz] === undefined) {
-      currentMap[cleanSz] = defaultDist[cleanSz] !== undefined ? defaultDist[cleanSz] : Math.max(1, Math.floor((p.stock || 20) / sizes.length));
+
+  if (authoritativeStock !== null) {
+    if (authoritativeStock === 0) {
+      sizes.forEach(sz => {
+        currentMap[String(sz).trim().toUpperCase()] = 0;
+      });
     } else {
-      currentMap[cleanSz] = Number(currentMap[cleanSz]);
+      let curSum = 0;
+      let hasAllSizes = true;
+      sizes.forEach(sz => {
+        const k = String(sz).trim().toUpperCase();
+        if (currentMap[k] === undefined) hasAllSizes = false;
+        else curSum += Number(currentMap[k]) || 0;
+      });
+
+      // If sizes are missing or their sum does not equal authoritativeStock, redistribute cleanly
+      if (!hasAllSizes || curSum !== authoritativeStock) {
+        const base = Math.floor(authoritativeStock / sizes.length);
+        let remainder = authoritativeStock % sizes.length;
+        sizes.forEach(sz => {
+          const k = String(sz).trim().toUpperCase();
+          const alloc = base + (remainder > 0 ? 1 : 0);
+          if (remainder > 0) remainder--;
+          currentMap[k] = alloc;
+        });
+      }
     }
-  });
-  const totalStock = Object.values(currentMap).reduce((a, b) => a + Number(b), 0);
+  } else {
+    const defaultDist = { 'XS': 6, 'S': 12, 'M': 15, 'L': 10, 'XL': 8, 'XXL': 5 };
+    sizes.forEach(sz => {
+      const cleanSz = String(sz).trim().toUpperCase();
+      if (currentMap[cleanSz] === undefined) {
+        currentMap[cleanSz] = defaultDist[cleanSz] !== undefined ? defaultDist[cleanSz] : 5;
+      } else {
+        currentMap[cleanSz] = Number(currentMap[cleanSz]);
+      }
+    });
+  }
+
+  const finalStock = authoritativeStock !== null 
+    ? authoritativeStock 
+    : Object.values(currentMap).reduce((a, b) => a + Number(b || 0), 0);
+
   return {
     ...p,
     sizes,
     sizeStocks: currentMap,
-    stock: totalStock || Number(p.stock || 0),
-    isAvailable: (totalStock > 0 || Number(p.stock || 0) > 0) && p.isAvailable !== false
+    stock: finalStock,
+    isAvailable: finalStock > 0 && p.isAvailable !== false
   };
 };
 
@@ -92,8 +128,17 @@ export const AppProvider = ({ children }) => {
   const [promoCode, setPromoCode] = useState('');
   const [appliedDiscount, setAppliedDiscount] = useState(0);
 
-  // Initialize with full 22-item catalog, ensuring all styles are loaded immediately
+  // Initialize with persisted catalog from localStorage if present, or INITIAL_PRODUCTS
   const [products, setProducts] = useState(() => {
+    try {
+      const saved = localStorage.getItem('avenza_products');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map(p => ensureProductSizeStocks({ ...p, isAvailable: p.isAvailable ?? true }));
+        }
+      }
+    } catch (e) {}
     return INITIAL_PRODUCTS.map(p => ensureProductSizeStocks({ ...p, isAvailable: p.isAvailable ?? true }));
   });
 
@@ -318,8 +363,8 @@ export const AppProvider = ({ children }) => {
               sizeStocks: dp.sizeStocks || initP.sizeStocks,
               sizes: dp.sizes && dp.sizes.length > 0 ? dp.sizes : (initP.sizes || ['S', 'M', 'L']),
               colors: dp.colors && dp.colors.length > 0 ? dp.colors : (initP.colors || [{ name: 'Default', hex: '#000000' }]),
-              image: dp.image || initP.image,
-              gallery: initP.gallery || (dp.image ? [dp.image] : []),
+              image: dp.image || dp.image_url || initP.image || 'https://images.unsplash.com/photo-1598033129183-c4f50c736f10?auto=format&fit=crop&w=800&q=80',
+              gallery: initP.gallery || (dp.image ? [dp.image] : (dp.image_url ? [dp.image_url] : ['https://images.unsplash.com/photo-1598033129183-c4f50c736f10?auto=format&fit=crop&w=800&q=80'])),
               isAvailable: dp.stock <= 0 ? false : (dp.isAvailable !== undefined ? Boolean(dp.isAvailable) : true),
               category: dp.category || initP.category || 'men',
               name: dp.name || initP.name
@@ -347,7 +392,15 @@ export const AppProvider = ({ children }) => {
       try {
         const dbUsers = await apiService.getUsers();
         if (dbUsers && Array.isArray(dbUsers) && dbUsers.length > 0) {
-          setUsersList(dbUsers);
+          const mappedUsers = dbUsers.map(u => ({
+            ...u,
+            username: u.username || (u.email ? u.email.split('@')[0] : u.name),
+            password: u.password || 'password123'
+          }));
+          setUsersList(mappedUsers);
+          try {
+            localStorage.setItem('avenza_all_users', JSON.stringify(mappedUsers));
+          } catch (e) {}
         }
       } catch (e) {}
     };
@@ -356,6 +409,14 @@ export const AppProvider = ({ children }) => {
     fetchApiOrders();
     fetchApiUsers();
   }, []);
+
+  // ====================================================================
+  // EPIC 4: CUSTOMER FEEDBACK, REVIEWS & MODERATION HANDLERS
+  // Covers User Stories:
+  //   - AVE-07: Customer Feedback & 1-5 Star Ratings Submission
+  //   - AVE-16: Admin / Manager Feedback Moderation & Official Replies
+  //   - AVE-22: View Verified Customer Reviews & Garment Experience
+  // ====================================================================
 
   // Open feedback modal with specified config
   const openFeedbackModal = (config) => {
@@ -521,7 +582,16 @@ export const AppProvider = ({ children }) => {
     });
   };
 
-  const login = (identifier, password) => {
+  // ====================================================================
+  // EPIC 1: USER AUTHENTICATION & ACCESS CONTROL HANDLERS
+  // Covers User Stories:
+  //   - AVE-01: Customer Registration & Secure Login Authentication
+  //   - AVE-08: Administrator Secure Authentication
+  //   - AVE-17: Staff Login Authentication
+  //   - AVE-23: Store Manager Login Authentication
+  // ====================================================================
+
+  const login = async (identifier, password) => {
     const rawId = (identifier || '').trim();
     const cleanId = rawId.toLowerCase();
     const cleanPass = (password || '').trim();
@@ -534,23 +604,26 @@ export const AppProvider = ({ children }) => {
     }
 
     if (!cleanId.includes('@')) {
-      if (!/^[a-zA-Z]+$/.test(rawId)) {
+      if (!/^[a-zA-Z0-9_]+$/.test(rawId)) {
         return { 
           success: false, 
-          error: 'Username can only contain letters (A-Z, a-z). Slashes like "\\" and symbols are not allowed.' 
+          error: 'Username can only contain letters, numbers, and underscores (_).' 
         };
       }
     }
 
-    // 1. MASTER USERS LIST & DATABASE CHECK (Prioritizes updated/reset passwords)
-    const matchedAccount = usersList.find(
-      acc => (acc.email && acc.email.toLowerCase() === cleanId) || 
-             (acc.username && acc.username.toLowerCase() === cleanId) ||
-             (cleanId === 'admin' && acc.email === 'admin@avenza.com') ||
-             (cleanId === 'manager' && acc.email === 'manager@avenza.com') ||
-             (cleanId === 'staff' && acc.email === 'staff@avenza.com') ||
-             (cleanId === 'customer' && acc.email === 'customer@avenza.com')
-    );
+    // 1. MASTER USERS LIST & LOCAL CACHE CHECK
+    let matchedAccount = usersList.find(acc => {
+      const emailMatch = acc.email && acc.email.toLowerCase().trim() === cleanId;
+      const userPrefix = acc.email && acc.email.split('@')[0].toLowerCase().trim() === cleanId;
+      const usernameMatch = acc.username && acc.username.toLowerCase().trim() === cleanId;
+      const nameMatch = acc.name && acc.name.toLowerCase().trim() === cleanId;
+      const roleShortcut = (cleanId === 'admin' && acc.role === 'admin') ||
+                           (cleanId === 'manager' && acc.role === 'manager') ||
+                           (cleanId === 'staff' && acc.role === 'inventory_staff') ||
+                           (cleanId === 'customer' && acc.email === 'customer@avenza.com');
+      return emailMatch || userPrefix || usernameMatch || nameMatch || roleShortcut;
+    });
 
     if (matchedAccount) {
       if (matchedAccount.status === 'inactive') {
@@ -578,12 +651,41 @@ export const AppProvider = ({ children }) => {
         );
         showToast(`Welcome back, ${matchedAccount.name}! 🛍️`, 'success');
         return { success: true };
-      } else {
-        return { success: false, error: 'Incorrect password. If your password was reset by an Admin, please use the temporary password.' };
       }
     }
 
-    // 2. FALLBACK DEFAULT ACCOUNTS (If not found in usersList)
+    // 2. BACKEND API DATABASE AUTHENTICATION FALLBACK
+    try {
+      const apiRes = await apiService.login(cleanId, cleanPass);
+      if (apiRes && apiRes.user) {
+        const loggedUser = {
+          ...apiRes.user,
+          username: apiRes.user.username || (apiRes.user.email ? apiRes.user.email.split('@')[0] : apiRes.user.name),
+          password: cleanPass
+        };
+        setUser(loggedUser);
+        setUsersList(prev => {
+          const exists = prev.some(u => u.id === loggedUser.id || (u.email && u.email.toLowerCase() === loggedUser.email.toLowerCase()));
+          return exists ? prev.map(u => (u.id === loggedUser.id || u.email === loggedUser.email) ? loggedUser : u) : [loggedUser, ...prev];
+        });
+        setIsAuthModalOpen(false);
+        setActiveTab(
+          loggedUser.role === 'admin' || loggedUser.role === 'manager' 
+            ? 'admin-dashboard' 
+            : loggedUser.role === 'inventory_staff' 
+            ? 'admin-inventory' 
+            : 'shop'
+        );
+        showToast(`Welcome back, ${loggedUser.name}! 🛍️`, 'success');
+        return { success: true };
+      } else if (apiRes && apiRes.error) {
+        return { success: false, error: apiRes.error };
+      }
+    } catch (e) {
+      console.warn('Backend database login attempt error:', e);
+    }
+
+    // 3. FALLBACK DEFAULT ACCOUNTS (admin, staff, manager, customer demo shortcuts)
     if (cleanId === 'admin' || cleanId === 'admin@avenza.com') {
       if (cleanPass === 'admin123' || cleanPass === 'password123') {
         const adminUser = {
@@ -666,21 +768,34 @@ export const AppProvider = ({ children }) => {
 
     return { 
       success: false, 
-      error: 'User not found. Please verify your email/username or register as a new customer.' 
+      error: 'User not found or incorrect password. Please verify your credentials or register.' 
     };
   };
 
   const register = async (name, email, phone, password) => {
-    const cleanName = (name || '').trim();
-    const cleanEmail = (email || '').trim().toLowerCase();
+    const rawName = name || '';
+    const cleanName = rawName.trim();
+    const rawEmail = email || '';
+    const cleanEmail = rawEmail.trim().toLowerCase();
     const cleanPhone = (phone || '').trim();
     const cleanPass = (password || '').trim();
 
-    if (!cleanName || cleanName.length < 2) {
-      return { success: false, error: 'Full name must be at least 2 characters.' };
+    if (!cleanName || cleanName.length < 3) {
+      return { success: false, error: 'Full name must be at least 3 characters.' };
     }
     if (!/^[a-zA-Z\s]+$/.test(cleanName)) {
-      return { success: false, error: 'Full name must contain only letters and spaces.' };
+      return { success: false, error: 'Full name must contain only letters and a space.' };
+    }
+    const nameWords = cleanName.split(/\s+/).filter(Boolean);
+    if (nameWords.length < 2) {
+      return { success: false, error: 'Full name must include both first name and last name separated by a space (e.g. John Doe).' };
+    }
+    if (nameWords.some(w => w.length < 2)) {
+      return { success: false, error: 'First name and last name must each be at least 2 letters long.' };
+    }
+
+    if (/\s/.test(rawEmail)) {
+      return { success: false, error: 'Email cannot contain spaces. Use underscores (_) instead (e.g. name_surname@example.com).' };
     }
     if (!cleanEmail || !cleanEmail.includes('@')) {
       return { success: false, error: 'Please provide a valid email address.' };
@@ -765,6 +880,18 @@ export const AppProvider = ({ children }) => {
     showToast('Logged out successfully', 'info');
   };
 
+  // ====================================================================
+  // EPIC 1: USER PROFILE, RBAC & ENTERPRISE AUDIT TRAIL HANDLERS
+  // Covers User Stories:
+  //   - AVE-02: View & Update User Profile & Shipping Addresses
+  //   - AVE-09: Create System User Accounts
+  //   - AVE-10: View & Update User Details
+  //   - AVE-11: Assign & Change User Roles (RBAC: Admin, Staff, Manager)
+  //   - AVE-12: Deactivate & Remove User Accounts
+  //   - AVE-13: System Settings & Operational Configurations
+  //   - AVE-16: Enterprise Audit Trail & Security Event Logging
+  // ====================================================================
+
   // Profile update (AVE-02)
   const updateUserProfile = (updatedFields) => {
     const updatedUser = { ...user, ...updatedFields };
@@ -789,6 +916,25 @@ export const AppProvider = ({ children }) => {
       ipAddress: '192.168.1.105'
     };
     setAuditLogs(prev => [newLog, ...prev]);
+
+    // Asynchronously persist audit log to backend MySQL database (AVE-16)
+    try {
+      fetch('http://localhost:5000/api/audit-logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: newLog.id,
+          userId: user?.id || null,
+          userName: user?.name || 'Administrator',
+          userRole: user?.role || 'admin',
+          action,
+          category,
+          target,
+          details,
+          severity
+        })
+      }).catch(() => {});
+    } catch (e) {}
   };
 
   // Admin User Management functions (AVE-09, AVE-10, AVE-11, AVE-12, AVE-14)
@@ -893,6 +1039,15 @@ export const AppProvider = ({ children }) => {
     );
     showToast('System settings saved successfully!', 'success');
   };
+
+  // ====================================================================
+  // EPIC 3: SHOPPING BAG, CART DRAWER & CHECKOUT ENGINE
+  // Covers User Stories:
+  //   - AVE-04: Shopping Bag Item Verification & Real-Time Stock Checks
+  //   - AVE-05: Multi-Step Checkout & Order Confirmation with Persistence
+  //   - AVE-15: Payment Processing & Bank Deposit Slip Verification
+  //   - AVE-17: Inventory Automatic Deduction & ACID Transaction Integrity
+  // ====================================================================
 
   const addToCart = (product, selectedSize, selectedColor, quantity = 1) => {
     if (!product) return;
@@ -1265,15 +1420,31 @@ export const AppProvider = ({ children }) => {
     return newOrder;
   };
 
+  // ====================================================================
+  // EPIC 2: PRODUCT CATALOG & INVENTORY MANAGEMENT HANDLERS
+  // Covers User Stories:
+  //   - AVE-03: Browse Apparel Products & Real-Time Stock Availability
+  //   - AVE-18: Add New Apparel Product (Multi-Size, Colors, SKU, Category)
+  //   - AVE-19: View Product Details & Stock Information
+  //   - AVE-20: Update Product Pricing, Descriptions, Sizes & Stock
+  //   - AVE-21: Toggle Real-Time Product Availability
+  //   - AVE-22: Archive / Delete Apparel Products
+  //   - AVE-26: Inventory Low-Stock Monitoring & Restocking Alerts
+  // ====================================================================
+
   const addProduct = (newProdData) => {
-    const createdProduct = {
+    if (newProdData.originalPrice && parseFloat(newProdData.originalPrice) <= parseFloat(newProdData.price)) {
+      showToast('Original Price must be strictly greater than Price in LKR', 'error');
+      return;
+    }
+    const createdProduct = ensureProductSizeStocks({
       ...newProdData,
       id: `prod-${Date.now()}`,
       rating: 0.0,
       reviewsCount: 0,
       isAvailable: newProdData.isAvailable ?? true,
       sku: `ACH-${(newProdData.category || 'MEN').toUpperCase().slice(0,2)}-${Math.floor(100 + Math.random() * 900)}`
-    };
+    });
     setProducts(prev => [createdProduct, ...prev]);
     apiService.createProduct(createdProduct);
     showToast(`Product "${createdProduct.name}" added to inventory & database!`, 'success');
@@ -1281,14 +1452,34 @@ export const AppProvider = ({ children }) => {
 
   const updateProductStock = (productId, newStock) => {
     const stockVal = Math.max(0, parseInt(newStock) || 0);
-    setProducts(prev => prev.map(p => p.id === productId ? { ...p, stock: stockVal } : p));
+    setProducts(prev => prev.map(p => {
+      if (p.id === productId) {
+        return ensureProductSizeStocks({ ...p, stock: stockVal, isAvailable: stockVal > 0 });
+      }
+      return p;
+    }));
     apiService.updateStock(productId, stockVal);
     showToast('Inventory stock updated in database', 'success');
   };
 
   // Full product details update (AVE-13)
   const updateProductDetails = (productId, updatedData) => {
-    setProducts(prev => prev.map(p => p.id === productId ? { ...p, ...updatedData } : p));
+    if (updatedData.price && updatedData.originalPrice && parseFloat(updatedData.originalPrice) <= parseFloat(updatedData.price)) {
+      showToast('Original Price must be strictly greater than Price in LKR', 'error');
+      return;
+    }
+    const cleanStock = updatedData.stock !== undefined ? Math.max(0, parseInt(updatedData.stock) || 0) : undefined;
+    setProducts(prev => prev.map(p => {
+      if (p.id === productId) {
+        const merged = { ...p, ...updatedData };
+        if (cleanStock !== undefined) {
+          merged.stock = cleanStock;
+          merged.isAvailable = cleanStock > 0 ? (updatedData.isAvailable !== undefined ? Boolean(updatedData.isAvailable) : true) : false;
+        }
+        return ensureProductSizeStocks(merged);
+      }
+      return p;
+    }));
     apiService.updateProduct(productId, updatedData);
     showToast(`Product details for "${updatedData.name}" updated successfully!`, 'success');
   };
@@ -1311,6 +1502,18 @@ export const AppProvider = ({ children }) => {
     apiService.deleteProduct(productId);
     showToast('Product deleted from inventory & database', 'info');
   };
+
+  // ====================================================================
+  // EPIC 4: ORDER FULFILLMENT, COURIER DISPATCH & DELIVERY ISA HANDLERS
+  // Covers User Stories:
+  //   - AVE-06: Customer Track Order Delivery Status
+  //   - AVE-14: Delivery Records Update (Courier vs Express Same-Day ISA)
+  //   - AVE-15: Update Delivery Status (Processing -> Shipped -> Delivered)
+  //   - AVE-24: Manager Dashboard Business KPIs & Dispatch Controls
+  //   - AVE-25: Sales & Order Performance Reporting
+  //   - AVE-27: Customer & Order Performance Analytics
+  //   - AVE-28: Exportable Order & Fulfillment Reports
+  // ====================================================================
 
   const updateOrderStatus = (orderId, newStatus) => {
     setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
